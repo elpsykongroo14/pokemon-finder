@@ -27,6 +27,13 @@ const compareId = document.getElementById("compareId");
 const compareTypes = document.getElementById("compareTypes");
 const compareStats = document.getElementById("compareStats");
 const evolutionSection = document.querySelector(".evolution-title");
+const teamStrip = document.getElementById("team-strip");
+const teamSlots = document.getElementById("team-slots");
+const teamBtn = document.getElementById("team-btn");
+
+//storage key and limit constants for building teams
+const TEAM_KEY = "pokemon_team";
+const MAX_TEAM = 6;
 
 //initially we arent comparing any pokemon
 let compareMode = false;
@@ -151,8 +158,97 @@ function renderFavorites() {
 
 favoriteBtn.addEventListener("click", toggleFavorite);
 
-//toggling shiny version
+// helper function to read the team
+function getTeam() {
+  return JSON.parse(localStorage.getItem(TEAM_KEY) || "[]");
+}
 
+//working on functionality of add to team button
+function toggleTeam() {
+  if (!currentPokemon) return;
+
+  const team = getTeam();
+  const onTeam = team.some((p) => p.name === currentPokemon.name);
+
+  if (onTeam) {
+    const updated = team.filter((p) => p.name !== currentPokemon.name);
+    localStorage.setItem(TEAM_KEY, JSON.stringify(updated));
+  } else {
+    if (team.length >= MAX_TEAM) {
+      errorDiv.textContent = "Your team is full - remove a Pokémon  first.";
+      errorDiv.classList.remove("hidden");
+      setTimeout(() => errorDiv.classList.add("hidden"), 3000);
+      return;
+    }
+
+    const newMember = {
+      name: currentPokemon.name,
+      id: currentPokemon.id,
+      sprite:
+        currentPokemon.sprites.other["official-artwork"].front_default ||
+        currentPokemon.sprites.front_default,
+    };
+    team.push(newMember);
+    localStorage.setItem(TEAM_KEY, JSON.stringify(team));
+  }
+
+  renderTeam();
+  updateTeamBtn();
+}
+
+teamBtn.addEventListener("click", toggleTeam);
+
+//updating the button text and style depending on if a pokemon is on the team or not
+function updateTeamBtn() {
+  if (!currentPokemon) return;
+
+  const team = getTeam();
+  const onTeam = team.some((p) => p.name === currentPokemon.name);
+
+  teamBtn.textContent = onTeam ? "On Team!" : "+Add to Team";
+  teamBtn.classList.toggle("on-team", onTeam);
+}
+
+//rendering pokemon on team
+function renderTeam() {
+  const team = getTeam();
+  teamSlots.innerHTML = "";
+
+  for (let i = 0; i < MAX_TEAM; i++) {
+    const slot = document.createElement("div");
+    slot.className = "team-slot";
+
+    if (team[i]) {
+      //a filled slot
+      slot.classList.add("filled");
+      slot.innerHTML = `
+            <img src="${team[i].sprite}" alt="${team[i].name}" />
+            <button class="remove-team">X</button>
+            `;
+      //clicking on the sprite will allow us to search for the pokemon
+      slot.querySelector("img").addEventListener("click", () => {
+        searchInput.value = team[i].name;
+        searchPokemon();
+      });
+
+      //event to remove pokemon from team
+      slot.querySelector(".remove-team").addEventListener("click", (e) => {
+        e.stopPropagation();
+        const updated = getTeam().filter((p) => p.name !== team[i].name);
+        localStorage.setItem(TEAM_KEY, JSON.stringify(updated));
+        renderTeam();
+        updateTeamBtn();
+      });
+    } else {
+      //if its an empty slot
+      slot.innerHTML = `<span class="slot-empty">+</span>`;
+    }
+    teamSlots.appendChild(slot);
+  }
+  updateTeamBtn();
+}
+
+//toggling shiny version
 function toggleShiny() {
   if (!currentSprites) return;
 
@@ -287,6 +383,7 @@ function displayPokemon(pokemon) {
   currentPokemon = pokemon;
   updateFavoriteBtn();
   renderFavorites();
+  updateTeamBtn();
 
   fetchEvolutionChain(pokemon);
 
@@ -419,6 +516,7 @@ function toggleCompareMode() {
     favoriteBtn.classList.remove("hidden");
     evolutionSection.classList.remove("hidden");
     evolutionContainer.classList.remove("hidden");
+    teamBtn.classList.remove("hidden");
     cardsWrapper.classList.remove("comparing");
     document.getElementById("cards-wrapper").classList.remove("comparing");
 
@@ -432,6 +530,7 @@ function toggleCompareMode() {
     container.classList.add("comparing");
     cardsWrapper.classList.add("comparing");
     compareHint.classList.remove("hidden");
+    teamBtn.classList.add("hidden");
     compareHint.textContent = currentPokemon
       ? `⚔️ Now search a second Pokémon to compare with ${currentPokemon.name}`
       : "⚔️ Search a Pokémon to start comparing";
@@ -579,3 +678,4 @@ function renderHistory() {
 }
 renderFavorites();
 renderHistory();
+renderTeam();

@@ -10,6 +10,7 @@ body {
   color: #eee;
   min-height: 100vh;
   padding: 40px 20px;
+  padding-bottom: 90px;
 }
 
 .favorite-toggle {
@@ -443,6 +444,9 @@ button:not(.suggestion):hover {
 
 #cards-wrapper.comparing {
   grid-template-columns: 1fr 1fr;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .compare-btn {
@@ -505,6 +509,113 @@ button:not(.suggestion):hover {
 
 .stat-bar-fill.win {
   background: #5db85d;
+}
+
+.team-strip {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1a1a2e;
+  border-top: 2px solid #333355;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  z-index: 999;
+}
+
+.team-title {
+  color: #aaa;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+  white-space: nowrap;
+}
+
+.team-slots {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.team-slot {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  border: 2px dashed #333355;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s;
+  background: #252540;
+  position: relative;
+}
+
+.team-slot:hover {
+  border-color: #ff6b35;
+}
+
+.team-slot.filled {
+  border-style: solid;
+  border-color: #ff6b35;
+}
+
+.team-slot img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.team-slot .slot-empty {
+  color: #333355;
+  font-size: 1, 4rem;
+}
+
+.team-slot .remove-team {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  background: #ff4444;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.6rem;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.team-slot.filled:hover .remove-team {
+  display: flex;
+}
+
+.team-btn {
+  margin-top: 8px;
+  width: 100%;
+  background: transparent;
+  border: 2px solid #5db85d;
+  color: #5db85d;
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.team-btn:hover {
+  background: #5db85d;
+  color: #fff;
+}
+
+.team-btn.on-team {
+  background: #5db85d;
+  color: #fff;
 }
 
 .error {
