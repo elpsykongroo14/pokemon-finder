@@ -27,12 +27,19 @@ const compareId = document.getElementById("compareId");
 const compareTypes = document.getElementById("compareTypes");
 const compareStats = document.getElementById("compareStats");
 const evolutionSection = document.querySelector(".evolution-title");
+const teamStrip = document.getElementById("team-strip");
+const teamSlots = document.getElementById("team-slots");
+const teamBtn = document.getElementById("team-btn");
 
-//initially we arent comparing any pokemon
+//storage key and limit constants for building teams
+const TEAM_KEY = "pokemon_team";
+const MAX_TEAM = 6;
+
+//initially we aren't comparing any pokemon
 let compareMode = false;
 let comparePokemon = null;
 
-//initially we arent displaying any shiny sprites
+//initially we aren't displaying any shiny sprites
 let isShiny = false;
 let currentSprites = null;
 
@@ -151,8 +158,97 @@ function renderFavorites() {
 
 favoriteBtn.addEventListener("click", toggleFavorite);
 
-//toggling shiny version
+// helper function to read the team
+function getTeam() {
+  return JSON.parse(localStorage.getItem(TEAM_KEY) || "[]");
+}
 
+//working on functionality of add to team button
+function toggleTeam() {
+  if (!currentPokemon) return;
+
+  const team = getTeam();
+  const onTeam = team.some((p) => p.name === currentPokemon.name);
+
+  if (onTeam) {
+    const updated = team.filter((p) => p.name !== currentPokemon.name);
+    localStorage.setItem(TEAM_KEY, JSON.stringify(updated));
+  } else {
+    if (team.length >= MAX_TEAM) {
+      errorDiv.textContent = "Your team is full - remove a Pokémon  first.";
+      errorDiv.classList.remove("hidden");
+      setTimeout(() => errorDiv.classList.add("hidden"), 3000);
+      return;
+    }
+
+    const newMember = {
+      name: currentPokemon.name,
+      id: currentPokemon.id,
+      sprite:
+        currentPokemon.sprites.other["official-artwork"].front_default ||
+        currentPokemon.sprites.front_default,
+    };
+    team.push(newMember);
+    localStorage.setItem(TEAM_KEY, JSON.stringify(team));
+  }
+
+  renderTeam();
+  updateTeamBtn();
+}
+
+teamBtn.addEventListener("click", toggleTeam);
+
+//updating the button text and style depending on if a pokemon is on the team or not
+function updateTeamBtn() {
+  if (!currentPokemon) return;
+
+  const team = getTeam();
+  const onTeam = team.some((p) => p.name === currentPokemon.name);
+
+  teamBtn.textContent = onTeam ? "On Team!" : "+Add to Team";
+  teamBtn.classList.toggle("on-team", onTeam);
+}
+
+//rendering pokemon on team
+function renderTeam() {
+  const team = getTeam();
+  teamSlots.innerHTML = "";
+
+  for (let i = 0; i < MAX_TEAM; i++) {
+    const slot = document.createElement("div");
+    slot.className = "team-slot";
+
+    if (team[i]) {
+      //a filled slot
+      slot.classList.add("filled");
+      slot.innerHTML = `
+            <img src="${team[i].sprite}" alt="${team[i].name}" />
+            <button class="remove-team">X</button>
+            `;
+      //clicking on the sprite will allow us to search for the pokemon
+      slot.querySelector("img").addEventListener("click", () => {
+        searchInput.value = team[i].name;
+        searchPokemon();
+      });
+
+      //event to remove pokemon from team
+      slot.querySelector(".remove-team").addEventListener("click", (e) => {
+        e.stopPropagation();
+        const updated = getTeam().filter((p) => p.name !== team[i].name);
+        localStorage.setItem(TEAM_KEY, JSON.stringify(updated));
+        renderTeam();
+        updateTeamBtn();
+      });
+    } else {
+      //if its an empty slot
+      slot.innerHTML = `<span class="slot-empty">+</span>`;
+    }
+    teamSlots.appendChild(slot);
+  }
+  updateTeamBtn();
+}
+
+//toggling shiny version
 function toggleShiny() {
   if (!currentSprites) return;
 
@@ -287,6 +383,7 @@ function displayPokemon(pokemon) {
   currentPokemon = pokemon;
   updateFavoriteBtn();
   renderFavorites();
+  updateTeamBtn();
 
   fetchEvolutionChain(pokemon);
 
@@ -419,6 +516,7 @@ function toggleCompareMode() {
     favoriteBtn.classList.remove("hidden");
     evolutionSection.classList.remove("hidden");
     evolutionContainer.classList.remove("hidden");
+    teamBtn.classList.remove("hidden");
     cardsWrapper.classList.remove("comparing");
     document.getElementById("cards-wrapper").classList.remove("comparing");
 
@@ -432,6 +530,7 @@ function toggleCompareMode() {
     container.classList.add("comparing");
     cardsWrapper.classList.add("comparing");
     compareHint.classList.remove("hidden");
+    teamBtn.classList.add("hidden");
     compareHint.textContent = currentPokemon
       ? `⚔️ Now search a second Pokémon to compare with ${currentPokemon.name}`
       : "⚔️ Search a Pokémon to start comparing";
@@ -579,3 +678,321 @@ function renderHistory() {
 }
 renderFavorites();
 renderHistory();
+renderTeam();
+
+//
+//POKEMON TCG LIBRARY
+//
+const TCG_API_KEY = "867eefaa-71e5-48b8-bd39-98b7cb858f4d";
+const libraryBtn = document.getElementById("library-btn");
+const libraryView = document.getElementById("library-view");
+const libraryBack = document.getElementById("library-back");
+const librarySearchInput = document.getElementById("library-search");
+const librarySearchBtn = document.getElementById("library-search-btn");
+const cardPanel = document.getElementById("card-panel");
+const cardPanelBack = document.getElementById("card-panel-back");
+const cardPanelTitle = document.getElementById("card-panel-title");
+const cardGrid = document.getElementById("card-grid");
+const sortSelect = document.getElementById("sort-select");
+const mainContainer = document.querySelector(".container");
+
+//in-memory store for currently loaded TCG cards.
+let currentTCGCards = [];
+
+//rarity ranking map
+//converting rarity from strings to numbers and ranking them up from highest number to lowest
+const RARITY_RANK = {
+  "Secret Rare": 9,
+  "Special Illustration Rare": 8,
+  "Illustration Rare": 7,
+  "Ultra Rare": 7,
+  "Hyper Rare": 7,
+  "Rare Rainbow": 6,
+  "Rare Secret": 6,
+  "Rare Ultra": 5,
+  "Rare Holo VMAX": 5,
+  "Rare Holo VSTAR": 5,
+  "Rare Holo V": 4,
+  "Rare Holo GX": 4,
+  "Rare Holo EX": 4,
+  "Rare Holo": 3,
+  Rare: 2,
+  Uncommon: 1,
+  Common: 0,
+};
+//showing a default load when we first enter the library
+const DEFAULT_POKEMON = [
+  "charizard",
+  "pikachu",
+  "mewtwo",
+  "gengar",
+  "eevee",
+  "lucario",
+  "gardevoir",
+  "rayquaza",
+  "umbreon",
+  "blaziken",
+];
+
+//shuffling the names we have
+function shuffleArray(arr) {
+  //copying so we don't mutate the original aray
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    //swap
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled;
+}
+
+//the following functions are SPA navigation functions, toggling visibility using css instead of reloading the page
+async function showLibrary() {
+  mainContainer.classList.add("hidden");
+  libraryView.classList.remove("hidden");
+  favoritesToggle.classList.add("hidden");
+  libraryBtn.classList.add("hidden");
+
+  //reset the library each time its entered
+  librarySearchInput.value = "";
+  librarySearchInput.focus();
+
+  //show panel immediately with  a loading state
+  cardPanelTitle.textContent = "Featured Cards";
+  cardGrid.innerHTML = `<p class="library-loading">Loading cards...</p>`;
+  cardPanel.classList.remove("hidden");
+
+  const picks = shuffleArray(DEFAULT_POKEMON).slice(0, 4);
+
+  try {
+    //promise.all fires all fetches at once and waits for every one to finish before continuing
+    const results = await Promise.all(
+      picks.map((name) =>
+        fetch(
+          `https://api.pokemontcg.io/v2/cards?q=name:"${name}"&pageSize=60`,
+          { headers: { "X-Api-Key": TCG_API_KEY } },
+        ).then((r) => r.json()),
+      ),
+    );
+
+    //flattening the result where we merge all result.data arrays into one flat array for the grid.
+    currentTCGCards = results.flatMap((result) => result.data || []);
+
+    if (currentTCGCards.length === 0) {
+      cardGrid.innerHTML = `<p class="library-empty">No cards loaded.</p>`;
+      return;
+    }
+
+    renderCardGrid(getSortedCards());
+  } catch (err) {
+    cardGrid.innerHTML = `<p class="library-empty">Failed to load featured cards.</p>`;
+  }
+}
+
+function hideLibrary() {
+  libraryView.classList.add("hidden");
+  mainContainer.classList.remove("hidden");
+
+  favoritesToggle.classList.remove("hidden");
+  libraryBtn.classList.remove("hidden");
+}
+
+libraryBtn.addEventListener("click", showLibrary);
+libraryBack.addEventListener("click", hideLibrary);
+
+//this functions takes a name, and fetches all its available cards
+
+async function showCardPanel(pokemonName) {
+  cardPanelTitle.textContent = pokemonName;
+  cardGrid.innerHTML = `<p class="library-loading">Loading cards...</p>`;
+  cardPanel.classList.remove("hidden");
+
+  try {
+    const res = await fetch(
+      `https://api.pokemontcg.io/v2/cards?q=name:"${pokemonName}"&orderBy=-set.releaseDate&pageSize=250`,
+      { headers: { "X-Api-Key": TCG_API_KEY } },
+    );
+
+    if (!res.ok) throw new Error("TCG API error");
+
+    const data = await res.json();
+    currentTCGCards = data.data; //storing all cards in memory
+
+    if (currentTCGCards.length === 0) {
+      cardGrid.innerHTML = `<p class="library-empty">No TCG cards found for "${pokemonName}".</p>`;
+      return;
+    }
+
+    renderCardGrid(getSortedCards());
+  } catch (err) {
+    cardGrid.innerHTML = `<p class="library-empty">Failed to load cards. Check your connection.</p>`;
+  }
+}
+
+//going back to search results without re-fetching anything
+function hideCardPanel() {
+  cardPanel.classList.add("hidden");
+  currentTCGCards = [];
+}
+
+cardPanelBack.addEventListener("click", hideCardPanel);
+
+//now for the sorting part
+
+//reading currentTCGCards and returning a new sorted array without mutating currentTCGCards itself
+function getSortedCards() {
+  const sortValue = sortSelect.value;
+  //[...currentTCGCards] creates a shallow copy which sort will operate on
+  const cards = [...currentTCGCards];
+
+  if (sortValue === "newest") {
+    cards.sort((a, b) =>
+      (b.set.releaseDate || "").localeCompare(a.set.releaseDate || ""),
+    );
+  } else if (sortValue === "oldest") {
+    cards.sort((a, b) =>
+      (a.set.releaseDate || "").localeCompare(b.set.releaseDate || ""),
+    );
+  } else if (sortValue === "rarity") {
+    //looking up each card's rarity string in the RARITY_RANK map, if it isn't found, fall back to 0
+    //subtracting a from b so higher rank = earlier in array (descending)
+    cards.sort(
+      (a, b) => (RARITY_RANK[b.rarity] ?? 0) - (RARITY_RANK[a.rarity] ?? 0),
+    );
+  }
+
+  return cards;
+}
+
+//when sort dropdown changes, re-render with new order
+sortSelect.addEventListener("change", () => {
+  if (currentTCGCards.length > 0) renderCardGrid(getSortedCards());
+});
+
+//here's the rendering part
+
+//the function takes an array card objects and builds the DOM
+function renderCardGrid(cards) {
+  cardGrid.innerHTML = "";
+
+  cards.forEach((card) => {
+    const el = document.createElement("div");
+    el.className = "tcg-card";
+
+    const imgSrc = card.images?.small || "";
+    const setName = card.set?.name || "Unknown set";
+    const rarity = card.rarity || "Unknown";
+
+    el.innerHTML = `
+      <div class="tcg-card-img-wrap">
+        <img src="${imgSrc}" alt="${card.name}" loading="lazy" />
+      </div>
+      <div class="tcg-card-info">
+        <div class="tcg-card-set">${setName}</div>
+        <div class="tcg-card-rarity">${rarity}</div>
+      </div>
+    `;
+
+    //clicking on a card opens the high-res image in a new tab.
+    el.addEventListener("click", () => {
+      openCardModal(card);
+    });
+
+    cardGrid.appendChild(el);
+  });
+}
+
+//card detail modal
+
+const cardModal = document.createElement("div");
+cardModal.className = "card-modal hidden";
+cardModal.innerHTML = `
+  <div class="card-modal-backdrop"></div>
+  <div class="card-modal-content">
+    <button class="card-modal-close">✕</button>
+    <div class="card-modal-body">
+      <div class="card-modal-img-wrap">
+        <img id="card-modal-img" src="" alt="" />
+      </div>
+      <div class="card-modal-info">
+        <h2 class="card-modal-name"></h2>
+        <div class="card-modal-meta"></div>
+        <p class="card-modal-flavor"></p>
+      </div>
+    </div>
+  </div>
+`;
+document.body.appendChild(cardModal);
+
+const cardModalImg = cardModal.querySelector("#card-modal-img");
+const cardModalName = cardModal.querySelector(".card-modal-name");
+const cardModalMeta = cardModal.querySelector(".card-modal-meta");
+const cardModalFlavor = cardModal.querySelector(".card-modal-flavor");
+
+function openCardModal(card) {
+  cardModalImg.src = card.images?.large || card.images?.small || "";
+  cardModalImg.alt = card.name;
+  cardModalName.textContent = card.name;
+
+  //building meta rows from whatever data exists on the card project
+  const metaRows = [
+    { label: "Set", value: card.set?.name },
+    { label: "Released", value: card.set?.releaseDate?.replace(/\//g, " · ") },
+    { label: "Rarity", value: card.rarity },
+    { label: "Artist", value: card.artist },
+    { label: "HP", value: card.hp ? `${card.hp} HP` : null },
+    { label: "Type", value: card.supertypes?.join(", ") },
+  ];
+
+  cardModalMeta.innerHTML = metaRows
+    .filter((row) => row.value) //skip rows where the api returns nothing
+    .map(
+      (row) => `
+      <div class="meta-row">
+        <span class="meta-label">${row.label}</span>
+        <span class="meta-value">${row.value}</span>
+      </div>
+    `,
+    )
+    .join("");
+
+  // flavorText is the italic lore text printed on the card — lovely detail,
+  // but only present on some cards (mostly older sets and certain rarities)
+  cardModalFlavor.textContent = card.flavorText || "";
+  cardModalFlavor.classList.toggle("hidden", !card.flavorText);
+
+  cardModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeCardModal() {
+  cardModal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+//closing the modal
+cardModal
+  .querySelector(".card-modal-backdrop")
+  .addEventListener("click", closeCardModal);
+cardModal
+  .querySelector(".card-modal-close")
+  .addEventListener("click", closeCardModal);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !cardModal.classList.contains("hidden"))
+    closeCardModal();
+});
+
+//library search part
+
+//this is the entry point for when a user types a pokemon name and hits search in library view, showCardPanel() handles the fetching
+function searchLibrary() {
+  const query = librarySearchInput.value.trim();
+  if (!query) return;
+  showCardPanel(query);
+}
+
+librarySearchBtn.addEventListener("click", searchLibrary);
+librarySearchInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") searchLibrary();
+});

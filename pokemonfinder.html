@@ -9,6 +9,7 @@
   </head>
   <body>
     <button id="favorites-toggle" class="favorite-toggle">❤</button>
+    <button id="library-btn" class="library-btn">Pokemon TCG Library</button>
 
     <div id="overlay" class="overlay hidden"></div>
 
@@ -58,6 +59,7 @@
           <h3 class="evolution-title">Evolution Chain</h3>
           <div class="evolution-chain" id="evolution-chain"></div>
           <button id="favorite-btn" class="favorite-btn">🤍 Favorite</button>
+          <button id="team-btn" class="team-btn">+ Add To Team</button>
         </div>
 
         <div id="compare-card" class="pokemon-card hidden">
@@ -80,7 +82,45 @@
         style="margin-top: 10px"
       ></div>
 
+      <div id="team-strip" class="team-strip">
+        <div class="team-title">My Team</div>
+        <div id="team-slots" class="team-slots"></div>
+      </div>
+
       <div class="error hidden" id="error"></div>
+    </div>
+
+    <div id="library-view" class="library-view hidden">
+      <div class="library-header">
+        <button id="library-back" class="library-back">← Back</button>
+        <h2 class="library-title">Card Library</h2>
+        <div class="library-search-box">
+          <input
+            type="text"
+            id="library-search"
+            placeholder="Search Pokémon..."
+            autocomplete="off"
+          />
+          <button id="library-search-btn">Search</button>
+        </div>
+      </div>
+
+      <div id="card-panel" class="card-panel hidden">
+        <div class="card-panel-header">
+          <button id="card-panel-back" class="card-panel-back">
+            ← All Results
+          </button>
+          <h3 id="card-panel-title" class="card-panel-title"></h3>
+          <div class="sort-controls">
+            <select id="sort-select" class="sort-select">
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="rarity">By Rarity</option>
+            </select>
+          </div>
+        </div>
+        <div id="card-grid" class="card-grid"></div>
+      </div>
     </div>
   </body>
 </html>

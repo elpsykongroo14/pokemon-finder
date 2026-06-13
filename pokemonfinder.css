@@ -10,6 +10,7 @@ body {
   color: #eee;
   min-height: 100vh;
   padding: 40px 20px;
+  padding-bottom: 90px;
 }
 
 .favorite-toggle {
@@ -443,6 +444,9 @@ button:not(.suggestion):hover {
 
 #cards-wrapper.comparing {
   grid-template-columns: 1fr 1fr;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .compare-btn {
@@ -507,6 +511,109 @@ button:not(.suggestion):hover {
   background: #5db85d;
 }
 
+.team-strip {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1a1a2e;
+  border-top: 2px solid #333355;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  z-index: 999;
+}
+
+.team-title {
+  color: #aaa;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+  white-space: nowrap;
+}
+
+.team-slots {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.team-slot {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  border: 2px dashed #333355;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s;
+  background: #252540;
+  position: relative;
+}
+
+.team-slot:hover {
+  border-color: #ff6b35;
+}
+
+.team-slot.filled {
+  border-style: solid;
+  border-color: #ff6b35;
+}
+
+.team-slot img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.team-slot .slot-empty {
+  color: #333355;
+  font-size: 1, 4rem;
+}
+
+.team-slot .remove-team {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  background: #ff4444;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.6rem;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.team-btn {
+  margin-top: 8px;
+  width: 100%;
+  background: transparent;
+  border: 2px solid #5db85d;
+  color: #5db85d;
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.team-btn:hover {
+  background: #5db85d;
+  color: #fff;
+}
+
+.team-btn.on-team {
+  background: #5db85d;
+  color: #fff;
+}
+
 .error {
   color: #ff4444;
   padding: 20px;
@@ -532,6 +639,389 @@ button:not(.suggestion):hover {
   border-top-color: #ff6b35;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+/*
+   library view
+*/
+
+.library-view {
+  min-height: 100vh;
+  background: #111318;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.library-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1a1d24;
+  flex-wrap: wrap;
+}
+
+.library-title {
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  color: #d8dce8;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+.library-back {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #6b7080;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+  transition: color 0.2s border-color 0.2s;
+}
+
+.library-search-box {
+  display: flex;
+  gap: 8px;
+}
+
+.library-search-box input {
+  background: #22252e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d8dce8;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+  width: 220px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.library-search-box input:focus {
+  border-color: #5b8dee;
+}
+
+.library-search-box button {
+  background: #5b8dee;
+  border: none;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+  transition: opacity 0.2s;
+}
+
+.library-search-box button:hover {
+  opacity: 0.85;
+}
+
+/* Card panel (slides in over the library view) */
+
+.card-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.card-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1a1d24;
+}
+
+.card-panel-back {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #6b7080;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.card-panel-back:hover {
+  color: #d8dce8;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.card-panel-title {
+  flex: 1;
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  color: #d8dce8;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-select {
+  background: #22252e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d8dce8;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  cursor: pointer;
+  outline: none;
+}
+
+/* The scrollable card grid */
+
+.card-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  align-content: start;
+}
+
+/* Individual TCG card tile */
+
+.tcg-card {
+  background: #1a1d24;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    transform 0.15s;
+}
+
+.tcg-card:hover {
+  border-color: #5b8dee;
+  transform: translateY(-3px);
+}
+
+.tcg-card-img-wrap {
+  background: #22252e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+.tcg-card-img-wrap img {
+  width: 100%;
+  max-width: 140px;
+  display: block;
+  border-radius: 6px;
+}
+
+.tcg-card-info {
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tcg-card-set {
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  color: #6b7080;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tcg-card-rarity {
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  color: #5b8dee;
+}
+
+/* Loading / empty states */
+
+.library-loading,
+.library-empty {
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  color: #6b7080;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 60px 20px;
+  grid-column: 1 / -1;
+}
+
+/* The library-btn in the main view */
+
+.library-btn {
+  position: fixed;
+  top: 16px;
+  right: 70px;
+  background: #1a1d24;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d8dce8;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  z-index: 100;
+  transition:
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.library-btn:hover {
+  background: #ff6b35;
+  color: #fff;
+}
+
+/*
+card detail modal
+*/
+
+.card-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-modal.hidden {
+  display: none;
+}
+
+.card-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.card-modal-content {
+  position: relative;
+  background: #1a1d24;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  width: min(860px, 92vw);
+  max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: transparent;
+  border: none;
+  color: #6b7080;
+  font-size: 1rem;
+  cursor: pointer;
+  z-index: 1;
+  transition: color 0.2s;
+}
+
+.card-modal-close:hover {
+  color: #d8dce8;
+}
+
+.card-modal-body {
+  display: flex;
+  gap: 0;
+  overflow: hidden;
+  flex: 1;
+}
+
+.card-modal-img-wrap {
+  background: #111318;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  flex-shrink: 0;
+  width: 300px;
+}
+
+.card-modal-img-wrap img {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+  display: block;
+}
+
+.card-modal-info {
+  flex: 1;
+  padding: 32px 28px 28px;
+  overflow-y: auto;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card-modal-name {
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  color: #d8dce8;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  margin: 0;
+}
+
+.card-modal-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 16px;
+}
+
+.meta-label {
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.75rem;
+  color: #6b7080;
+  white-space: nowrap;
+}
+
+.meta-value {
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  color: #d8dce8;
+  text-align: right;
+}
+
+.card-modal-flavor {
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.8rem;
+  color: #6b7080;
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0;
+  padding-top: 4px;
 }
 
 @keyframes spin {
