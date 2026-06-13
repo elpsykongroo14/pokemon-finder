@@ -6,3 +6,6 @@ between two art sprites, then added an evolution chain as well as a favorites bu
 
 06-12-26:
 added feature that allows us to build a team of 6 pokemon and prompts an error message if we exceed the limit
+
+06-13-2026
+worked mainly on implementing a new feature, where i added a pokemon TCG library that allows us to search for all available cards using https://dev.pokemontcg.io/ api, a sorting system that allows us to sort from newest to oldest and vice versa as well as sorting using rarity, clicking on a card shows use a container with a description of it. Also when first entering said library we shuffle through a number of preselected pokemon and return a selected group to present randomly.
