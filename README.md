@@ -9,3 +9,6 @@ added feature that allows us to build a team of 6 pokemon and prompts an error m
 
 06-13-2026
 worked mainly on implementing a new feature, where i added a pokemon TCG library that allows us to search for all available cards using https://dev.pokemontcg.io/ api, a sorting system that allows us to sort from newest to oldest and vice versa as well as sorting using rarity, clicking on a card shows use a container with a description of it. Also when first entering said library we shuffle through a number of preselected pokemon and return a selected group to present randomly.
+
+06-14-2026
+update and cleaned up the UI, as well as fixing some design flaws, cleaning up dead code and Inconsistencies. 
