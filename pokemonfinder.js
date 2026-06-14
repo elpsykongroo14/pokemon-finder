@@ -31,6 +31,15 @@ const teamStrip = document.getElementById("team-strip");
 const teamSlots = document.getElementById("team-slots");
 const teamBtn = document.getElementById("team-btn");
 
+const mainStats = [
+  "hp",
+  "attack",
+  "defense",
+  "speed",
+  "special-attack",
+  "special-defense",
+];
+
 //storage key and limit constants for building teams
 const TEAM_KEY = "pokemon_team";
 const MAX_TEAM = 6;
@@ -251,6 +260,17 @@ function renderTeam() {
 //toggling shiny version
 function toggleShiny() {
   if (!currentSprites) return;
+
+  const shinyUrl =
+    currentSprites.other["official-artwork"].front_shiny ||
+    currentSprites.front_shiny;
+
+  if (!shinyUrl && !isShiny) {
+    errorDiv.textContent = "No shiny sprite available for this Pokémon.";
+    errorDiv.classList.remove("hidden");
+    setTimeout(() => errorDiv.classList.add("hidden"), 2500);
+    return;
+  }
 
   isShiny = !isShiny;
 
@@ -518,14 +538,12 @@ function toggleCompareMode() {
     evolutionContainer.classList.remove("hidden");
     teamBtn.classList.remove("hidden");
     cardsWrapper.classList.remove("comparing");
-    document.getElementById("cards-wrapper").classList.remove("comparing");
 
     if (currentPokemon) displayPokemon(currentPokemon);
   } else {
     shinyBtn.classList.add("hidden");
     favoriteBtn.classList.add("hidden");
     evolutionSection.classList.add("hidden");
-    container.classList.remove("comparing");
     evolutionContainer.classList.add("hidden");
     container.classList.add("comparing");
     cardsWrapper.classList.add("comparing");
@@ -588,15 +606,6 @@ function displayComparedPokemon(pokemon) {
 }
 
 //we are going to loop through the stats and compare them after both pokemon are loaded
-
-const mainStats = [
-  "hp",
-  "attack",
-  "defense",
-  "speed",
-  "special-attack",
-  "special-defense",
-];
 
 function highlightStats() {
   if (!currentPokemon || !comparePokemon) return;
@@ -720,19 +729,6 @@ const RARITY_RANK = {
   Uncommon: 1,
   Common: 0,
 };
-//showing a default load when we first enter the library
-const DEFAULT_POKEMON = [
-  "charizard",
-  "pikachu",
-  "mewtwo",
-  "gengar",
-  "eevee",
-  "lucario",
-  "gardevoir",
-  "rayquaza",
-  "umbreon",
-  "blaziken",
-];
 
 //shuffling the names we have
 function shuffleArray(arr) {
@@ -753,6 +749,7 @@ async function showLibrary() {
   libraryView.classList.remove("hidden");
   favoritesToggle.classList.add("hidden");
   libraryBtn.classList.add("hidden");
+  teamStrip.classList.add("hidden");
 
   //reset the library each time its entered
   librarySearchInput.value = "";
@@ -763,9 +760,18 @@ async function showLibrary() {
   cardGrid.innerHTML = `<p class="library-loading">Loading cards...</p>`;
   cardPanel.classList.remove("hidden");
 
-  const picks = shuffleArray(DEFAULT_POKEMON).slice(0, 4);
-
   try {
+    //fetching full list of all names from pokeAPI, getting every single one in one request
+    const pokeRes = await fetch("https://pokeapi.co/api/v2/pokemon?limit=1025");
+    const pokeData = await pokeRes.json();
+
+    //since pokeData.results is an array of object, we only need the names, so we map to extract them
+    const allNames = pokeData.results.map((p) => p.name);
+
+    //shuffling list and taking a slice
+    const picks = shuffleArray(allNames).slice(0, 20);
+
+    //
     //promise.all fires all fetches at once and waits for every one to finish before continuing
     const results = await Promise.all(
       picks.map((name) =>
@@ -786,7 +792,11 @@ async function showLibrary() {
 
     renderCardGrid(getSortedCards());
   } catch (err) {
-    cardGrid.innerHTML = `<p class="library-empty">Failed to load featured cards.</p>`;
+    if (err instanceof TypeError) {
+      cardGrid.innerHTML = `<p class="library-empty">Network error — check your connection.</p>`;
+    } else {
+      cardGrid.innerHTML = `<p class="library-empty">Failed to load cards for "${pokemonName}".</p>`;
+    }
   }
 }
 
@@ -796,6 +806,7 @@ function hideLibrary() {
 
   favoritesToggle.classList.remove("hidden");
   libraryBtn.classList.remove("hidden");
+  teamStrip.classList.remove("hidden");
 }
 
 libraryBtn.addEventListener("click", showLibrary);
@@ -826,7 +837,11 @@ async function showCardPanel(pokemonName) {
 
     renderCardGrid(getSortedCards());
   } catch (err) {
-    cardGrid.innerHTML = `<p class="library-empty">Failed to load cards. Check your connection.</p>`;
+    if (err instanceof TypeError) {
+      cardGrid.innerHTML = `<p class="library-empty">Network error — check your connection.</p>`;
+    } else {
+      cardGrid.innerHTML = `<p class="library-empty">Failed to load cards for "${pokemonName}".</p>`;
+    }
   }
 }
 
