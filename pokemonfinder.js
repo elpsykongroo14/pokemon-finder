@@ -30,6 +30,91 @@ const evolutionSection = document.querySelector(".evolution-title");
 const teamStrip = document.getElementById("team-strip");
 const teamSlots = document.getElementById("team-slots");
 const teamBtn = document.getElementById("team-btn");
+const flavorText = document.getElementById("flavor-text");
+const pokemonMeta = document.getElementById("pokemon-meta");
+const typeEffectiveness = document.getElementById("type-effectiveness");
+const tcgBtn = document.getElementById("tcg-btn");
+
+// this is the types effectiveness, the data is static so we keep it in the code to avoid unnecessary network round trips
+// "double" means 2× damage to those types
+// "half"   means 0.5× damage to those types
+// "immune" means 0× damage to those types
+// Omitted = 1× (normal damage)
+const TYPE_CHART = {
+  normal: { immune: ["ghost"], half: ["rock", "steel"] },
+  fire: {
+    double: ["grass", "ice", "bug", "steel"],
+    half: ["fire", "water", "rock", "dragon"],
+  },
+  water: {
+    double: ["fire", "ground", "rock"],
+    half: ["water", "grass", "dragon"],
+  },
+  electric: {
+    double: ["water", "flying"],
+    half: ["electric", "grass", "dragon"],
+    immune: ["ground"],
+  },
+  grass: {
+    double: ["water", "ground", "rock"],
+    half: ["fire", "grass", "poison", "flying", "bug", "dragon", "steel"],
+  },
+  ice: {
+    double: ["grass", "ground", "flying", "dragon"],
+    half: ["water", "ice", "steel"],
+  },
+  fighting: {
+    double: ["normal", "ice", "rock", "dark", "steel"],
+    half: ["poison", "flying", "psychic", "bug", "fairy"],
+    immune: ["ghost"],
+  },
+  poison: {
+    double: ["grass", "fairy"],
+    half: ["poison", "ground", "rock", "ghost"],
+    immune: ["steel"],
+  },
+  ground: {
+    double: ["fire", "electric", "poison", "rock", "steel"],
+    half: ["grass", "bug"],
+    immune: ["flying"],
+  },
+  flying: {
+    double: ["grass", "fighting", "bug"],
+    half: ["electric", "rock", "steel"],
+  },
+  psychic: {
+    double: ["fighting", "poison"],
+    half: ["psychic", "steel"],
+    immune: ["dark"],
+  },
+  bug: {
+    double: ["grass", "psychic", "dark"],
+    half: ["fire", "fighting", "poison", "flying", "ghost", "steel", "fairy"],
+  },
+  rock: {
+    double: ["fire", "ice", "flying", "bug"],
+    half: ["fighting", "ground", "steel"],
+  },
+  ghost: {
+    double: ["psychic", "ghost"],
+    half: ["dark"],
+    immune: ["normal", "fighting"],
+  },
+  dragon: { double: ["dragon"], half: ["steel"], immune: ["fairy"] },
+  dark: {
+    double: ["psychic", "ghost"],
+    half: ["fighting", "dark", "fairy"],
+    immune: [],
+  },
+  steel: {
+    double: ["ice", "rock", "fairy"],
+    half: ["fire", "water", "electric", "steel"],
+  },
+  fairy: {
+    double: ["fighting", "dragon", "dark"],
+    half: ["fire", "poison", "steel"],
+  },
+};
 
 const mainStats = [
   "hp",
@@ -114,7 +199,7 @@ function updateFavoriteBtn() {
   const favorites = getFavorites();
   const isFavorited = favorites.some((f) => f.name === currentPokemon.name);
 
-  favoriteBtn.textContent = isFavorited ? "❤️ Favorited" : "🤍 Favorite";
+  favoriteBtn.textContent = isFavorited ? "❤️ in Favorites" : "🤍 Favorite";
   favoriteBtn.classList.toggle("favorited", isFavorited);
 }
 
@@ -383,6 +468,47 @@ function displayPokemon(pokemon) {
     )
     .join("");
 
+  //displaying the physical info
+  const heightM = (pokemon.height / 10).toFixed(1);
+  const weightKg = (pokemon.weight / 10).toFixed(1);
+
+  //abilities separate normal from hidden
+  //is_hidden is a boolean provided by the api
+  const normalAbilities = pokemon.abilities
+    .filter((a) => !a.is_hidden)
+    .map((a) => a.ability.name)
+    .join(", ");
+
+  const hiddenAbility = pokemon.abilities.find((a) => a.is_hidden);
+
+  pokemonMeta.innerHTML = `
+  <table class="meta-table">
+    <tbody>
+      <tr>
+        <td class="meta-key">Height</td>
+        <td class="meta-val">${heightM} m</td>
+      </tr>
+      <tr>
+        <td class="meta-key">Weight</td>
+        <td class="meta-val">${weightKg} kg</td>
+      </tr>
+      <tr>
+        <td class="meta-key">Abilities</td>
+        <td class="meta-val">${normalAbilities}</td>
+      </tr>
+      ${
+        hiddenAbility
+          ? `
+      <tr>
+        <td class="meta-key">Hidden</td>
+        <td class="meta-val hidden-ability">${hiddenAbility.ability.name}</td>
+      </tr>`
+          : ""
+      }
+    </tbody>
+  </table>
+`;
+
   pokemonStats.innerHTML = pokemon.stats
     .filter((s) => mainStats.includes(s.stat.name))
     .map(
@@ -407,6 +533,8 @@ function displayPokemon(pokemon) {
 
   fetchEvolutionChain(pokemon);
 
+  renderTypeEffectiveness(pokemon);
+
   pokemonCard.classList.remove("hidden");
 
   currentSprites = pokemon.sprites;
@@ -414,6 +542,97 @@ function displayPokemon(pokemon) {
   isShiny = false;
   shinyBtn.textContent = "Toggle Shiny";
 }
+
+//now to work on the type's weaknesses and strengths
+//we are going to compute how much damage each attacking type deals
+function computeDefensiveChart(pokemonTypes) {
+  //starting every attacking type at 1x multiplier
+  const multipliers = {};
+  Object.keys(TYPE_CHART).forEach((type) => {
+    multipliers[type] = 1;
+  });
+
+  //for each of the types (could be 1 or 2)
+  //loop through every attacking type and adjust the multiplier
+  pokemonTypes.forEach((defendingType) => {
+    Object.keys(TYPE_CHART).forEach((attackingType) => {
+      const chart = TYPE_CHART[attackingType];
+
+      if (chart.double?.includes(defendingType)) {
+        //deals 2x against this defending type
+        multipliers[attackingType] *= 2;
+      } else if (chart.half?.includes(defendingType)) {
+        //deals 0.5x against this defending type
+        multipliers[attackingType] *= 0.5;
+      } else if (chart.immune?.includes(defendingType)) {
+        multipliers[attackingType] *= 0; // 0x = immune;
+      }
+      //if its not listed, multiplier stays at 1x
+    });
+  });
+  return multipliers;
+}
+
+//rendering the type effectiveness
+function renderTypeEffectiveness(pokemon) {
+  const pokemonTypes = pokemon.types.map((t) => t.type.name);
+  const multipliers = computeDefensiveChart(pokemonTypes);
+
+  //group the types by their multiplier value
+  const groups = { 4: [], 2: [], 0.5: [], 0.25: [], 0: [] };
+
+  Object.entries(multipliers).forEach(([type, mult]) => {
+    if (mult === 4) groups[4].push(type);
+    if (mult === 2) groups[2].push(type);
+    if (mult === 0.5) groups[0.5].push(type);
+    if (mult === 0.25) groups[0.25].push(type);
+    if (mult === 0) groups[0].push(type);
+  });
+
+  //only rendering groups in HTML
+  const labels = {
+    4: { text: "4× Weak", color: "#e74c3c" },
+    2: { text: "2× Weak", color: "#e8754a" },
+    0.5: { text: "½× Resist", color: "#4a9eff" },
+    0.25: { text: "¼× Resist", color: "#3a7fd4" },
+    0: { text: "Immune", color: "#545a6e" },
+  };
+
+  const rows = Object.entries(groups)
+    .filter(([, types]) => types.length > 0)
+    .map(([mult, types]) => {
+      const { text, color } = labels[mult];
+      const chips = types
+        .map(
+          (t) =>
+            `<span class="type" style="background-color:${typeColors[t] || "#777"}">${t}</span>`,
+        )
+        .join("");
+      return `
+        <div class="effectiveness-row">
+          <span class="effectiveness-label" style="color:${color}">${text}</span>
+          <div class="effectiveness-types">${chips}</div>
+        </div>`;
+    })
+    .join("");
+
+  typeEffectiveness.innerHTML = rows
+    ? `<h3 class= "section-label">Type Matchups</h3>${rows}`
+    : "";
+}
+
+//getting the tcg of a specific pokemon
+tcgBtn.addEventListener("click", () => {
+  if (!currentPokemon) return;
+
+  //navigating to the library view
+  showLibrary();
+
+  //we immediately open the pokemon's card panel
+  //we use setTimeout(0) to let showLibrary() finish its async setup
+  //before showCardPanel tries to write into the DOM it just built
+  setTimeout(() => showCardPanel(currentPokemon.name), 0);
+});
 
 //fetching random pokemon
 
@@ -444,6 +663,26 @@ async function fetchEvolutionChain(pokemon) {
     //fetching species data
     const speciesRes = await fetch(pokemon.species.url);
     const speciesData = await speciesRes.json();
+
+    //flavor text
+    //we filter for english entries an take the first one because flavor_text_entries is an array of {flavor_text, language, version}
+    const englishEntry = speciesData.flavor_text_entries.find(
+      (entry) => entry.language.name === "en",
+    );
+
+    //since the api uses \f (from feed) and \n as line breaks inside strings, we replace them with a single space so the text flows naturally.
+    if (englishEntry) {
+      const cleaned = englishEntry.flavor_text
+        .replace(/\f/g, " ")
+        .replace(/\n/g, " ")
+        .replace(/POK\u00e9MON/gi, "Pokémon")
+        .replace(/\b([A-ZÉÈÊ]{2,})\b/g, (match) => {
+          return match.charAt(0).toUpperCase() + match.slice(1).toLowerCase();
+        });
+      flavorText.textContent = cleaned;
+    } else {
+      flavorText.textContent = "";
+    }
 
     //fetching evolution data
     const evoRes = await fetch(speciesData.evolution_chain.url);
@@ -539,6 +778,11 @@ function toggleCompareMode() {
     teamBtn.classList.remove("hidden");
     cardsWrapper.classList.remove("comparing");
 
+    flavorText.classList.remove("hidden");
+    pokemonMeta.classList.remove("hidden");
+    typeEffectiveness.classList.remove("hidden");
+    tcgBtn.classList.remove("hidden");
+
     if (currentPokemon) displayPokemon(currentPokemon);
   } else {
     shinyBtn.classList.add("hidden");
@@ -552,6 +796,10 @@ function toggleCompareMode() {
     compareHint.textContent = currentPokemon
       ? `⚔️ Now search a second Pokémon to compare with ${currentPokemon.name}`
       : "⚔️ Search a Pokémon to start comparing";
+    flavorText.classList.add("hidden");
+    pokemonMeta.classList.add("hidden");
+    typeEffectiveness.classList.add("hidden");
+    tcgBtn.classList.add("hidden");
   }
 }
 

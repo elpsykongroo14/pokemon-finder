@@ -523,7 +523,7 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
 }
 
 /* ============================================================
-   STATS
+   STATS / flavor text / physical attributes
    ============================================================ */
 .stats {
   display: flex;
@@ -587,8 +587,63 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
   background: #ff5555;
 }
 
+.flavor-text {
+  font-style: italic;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  border-left: 2px solid var(--accent);
+  padding-left: 10px;
+  margin: 10px 0 14px;
+}
+
+.meta-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.83rem;
+}
+
+/* Every row gets a subtle bottom border as a divider */
+.meta-table tbody tr {
+  border-bottom: 1px solid var(--border);
+}
+
+/* Remove the divider from the last row so it doesn't double up 
+   against whatever sits below the table */
+.meta-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Alternating row tint — a classic table readability trick */
+.meta-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.meta-key {
+  color: var(--text-hint);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 7px 12px 7px 0;
+  white-space: nowrap; /* label never wraps onto two lines */
+  vertical-align: top; /* if the value wraps, label stays pinned to top */
+  width: 1%; /* shrink column to fit content, value column gets the rest */
+}
+
+.meta-val {
+  color: var(--text-primary);
+  text-transform: capitalize;
+  padding: 7px 0;
+  vertical-align: top;
+}
+
+.hidden-ability {
+  color: var(--accent);
+}
+
 /* ============================================================
-   CARD ACTION BUTTONS — shiny / favorite / team
+   CARD ACTION BUTTONS — shiny / favorite / team / type effectiveness / tcg button
    ============================================================ */
 #shiny-btn {
   margin-top: 18px;
@@ -662,6 +717,61 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
   background: var(--green-dim);
   border-color: var(--green);
   color: var(--green);
+}
+
+.type-effectiveness {
+  margin: 14px 0;
+}
+
+.section-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-hint);
+  margin-bottom: 8px;
+}
+
+.effectiveness-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.effectiveness-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  min-width: 76px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.effectiveness-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tcg-btn {
+  width: 100%;
+  padding: 9px 0;
+  margin-top: 6px;
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--speed),
+    border-color var(--speed);
+}
+
+.tcg-btn:hover {
+  background: rgba(74, 158, 255, 0.2);
+  border-color: rgba(74, 158, 255, 0.45);
 }
 
 /* ============================================================
