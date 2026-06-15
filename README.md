@@ -12,3 +12,16 @@ worked mainly on implementing a new feature, where i added a pokemon TCG library
 
 06-14-2026
 update and cleaned up the UI, as well as fixing some design flaws, cleaning up dead code and Inconsistencies. 
+
+06-15-2026
+added a few features that improve the user experience such as flavour text that adds a bried description of each pokemon
+as well as the physical attributes describing the weight/height/abilities, then a complex type effectiveness which was
+the most interesting one conceptually, so let's really dig in.
+The mental model: Pokémon has 18 types. Every attacking type deals a certain multiplier against every defending type: 2× (super effective), 0.5× (not very effective), 0× (immune), or 1× (normal). This forms an 18×18 matrix of rules.
+We bake this in as a data structure because:
+
+It never changes (it's game data, not live data)
+Fetching it from the API on every search would be wasteful and add latency
+Having it in code means you can read and reason about it directly.
+
+all of these previous features data were all provided by the API.
