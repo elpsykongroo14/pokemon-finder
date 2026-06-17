@@ -25,3 +25,10 @@ Fetching it from the API on every search would be wasteful and add latency
 Having it in code means you can read and reason about it directly.
 
 all of these previous features data were all provided by the API.
+
+06-17-26
+worked on improving some existing features as well as added some quality of life improvements such as:
+
+Keyboard nav — to improve accesibility for everyone.
+Compare type effectiveness — just to make it more clean
+Shareable URLs - biggest learning experience for me today, taught me an interesting concept
