@@ -445,6 +445,11 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
   background: var(--accent-dim);
 }
 
+.suggestion:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* ============================================================
    CARDS WRAPPER + COMPARE LAYOUT
    ============================================================ */

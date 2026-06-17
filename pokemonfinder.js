@@ -34,6 +34,9 @@ const flavorText = document.getElementById("flavor-text");
 const pokemonMeta = document.getElementById("pokemon-meta");
 const typeEffectiveness = document.getElementById("type-effectiveness");
 const tcgBtn = document.getElementById("tcg-btn");
+const compareTypeEffectiveness = document.getElementById(
+  "compare-type-effectiveness",
+);
 
 // this is the types effectiveness, the data is static so we keep it in the code to avoid unnecessary network round trips
 // "double" means 2× damage to those types
@@ -527,6 +530,12 @@ function displayPokemon(pokemon) {
   pokemonId.textContent = `#${String(pokemon.id).padStart(3, "0")}`;
 
   currentPokemon = pokemon;
+
+  //updating the URL to reflect the current pokemon
+  pushState({ pokemon: pokemon.name }, pokemon.name);
+  //updating the page title to show pokemon name in browser tabs in shared links
+  document.title = `${pokemon.name} - Pokémon Finder`;
+
   updateFavoriteBtn();
   renderFavorites();
   updateTeamBtn();
@@ -574,7 +583,9 @@ function computeDefensiveChart(pokemonTypes) {
 }
 
 //rendering the type effectiveness
-function renderTypeEffectiveness(pokemon) {
+//target: the dom element to render into
+//it defaults to primary card's element so existing calls like renderTypeEffectiveness(pokemon) still work without passing a second argument
+function renderTypeEffectiveness(pokemon, target = typeEffectiveness) {
   const pokemonTypes = pokemon.types.map((t) => t.type.name);
   const multipliers = computeDefensiveChart(pokemonTypes);
 
@@ -616,7 +627,7 @@ function renderTypeEffectiveness(pokemon) {
     })
     .join("");
 
-  typeEffectiveness.innerHTML = rows
+  target.innerHTML = rows
     ? `<h3 class= "section-label">Type Matchups</h3>${rows}`
     : "";
 }
@@ -782,6 +793,7 @@ function toggleCompareMode() {
     pokemonMeta.classList.remove("hidden");
     typeEffectiveness.classList.remove("hidden");
     tcgBtn.classList.remove("hidden");
+    compareTypeEffectiveness.innerHTML = "";
 
     if (currentPokemon) displayPokemon(currentPokemon);
   } else {
@@ -794,11 +806,10 @@ function toggleCompareMode() {
     compareHint.classList.remove("hidden");
     teamBtn.classList.add("hidden");
     compareHint.textContent = currentPokemon
-      ? `⚔️ Now search a second Pokémon to compare with ${currentPokemon.name}`
+      ? `⚔️ Now search a second Pokémon  to compare with ${currentPokemon.name}`
       : "⚔️ Search a Pokémon to start comparing";
     flavorText.classList.add("hidden");
     pokemonMeta.classList.add("hidden");
-    typeEffectiveness.classList.add("hidden");
     tcgBtn.classList.add("hidden");
   }
 }
@@ -849,6 +860,8 @@ function displayComparedPokemon(pokemon) {
   compareCard.classList.remove("hidden");
 
   highlightStats();
+
+  renderTypeEffectiveness(pokemon, compareTypeEffectiveness);
 
   compareHint.textContent = `${currentPokemon.name} vs ${comparePokemon.name}`;
 }
@@ -932,10 +945,11 @@ function renderHistory() {
     });
     historyContainer.appendChild(btn);
   });
+
+  //re-init keyboard nav every time the history is rebuilt
+  //we call it here because the buttons didn't exist before renderHistory ran
+  initSuggestionKeyNav(historyContainer);
 }
-renderFavorites();
-renderHistory();
-renderTeam();
 
 //
 //POKEMON TCG LIBRARY
@@ -999,6 +1013,8 @@ async function showLibrary() {
   libraryBtn.classList.add("hidden");
   teamStrip.classList.add("hidden");
 
+  pushState({ view: "library" }, "TCG Library");
+
   //reset the library each time its entered
   librarySearchInput.value = "";
   librarySearchInput.focus();
@@ -1055,6 +1071,15 @@ function hideLibrary() {
   favoritesToggle.classList.remove("hidden");
   libraryBtn.classList.remove("hidden");
   teamStrip.classList.remove("hidden");
+
+  //restore the URL to reflect main view when we leave the library
+  if (currentPokemon) {
+    pushState({ pokemon: currentPokemon.name }, currentPokemon.name);
+  } else {
+    //no pokemon loaded = clear the URL back to normal
+    history.pushState({}, "", window.location.pathname);
+    document.title = "Pokémon Finder";
+  }
 }
 
 libraryBtn.addEventListener("click", showLibrary);
@@ -1063,6 +1088,11 @@ libraryBack.addEventListener("click", hideLibrary);
 //this functions takes a name, and fetches all its available cards
 
 async function showCardPanel(pokemonName) {
+  pushState(
+    { view: "library", search: pokemonName },
+    `${pokemonName} - TCG Cards`,
+  );
+
   cardPanelTitle.textContent = pokemonName;
   cardGrid.innerHTML = `<p class="library-loading">Loading cards...</p>`;
   cardPanel.classList.remove("hidden");
@@ -1255,7 +1285,148 @@ function searchLibrary() {
   showCardPanel(query);
 }
 
+//keyboard navigation
+function initSuggestionKeyNav(container) {
+  //we call this inside the function since the history container is dynamic
+  //its buttons are created by renderHistory() and didn't exist when the page loaded
+  const buttons = Array.from(container.querySelectorAll(".suggestion"));
+
+  if (buttons.length === 0) return;
+
+  //at fist button gets 0 (Tab will land here)
+  //all the others get -1 (Tab skips them but js can focus them)
+  buttons.forEach((btn, index) => {
+    btn.setAttribute("tabindex", index === 0 ? "0" : "-1");
+  });
+
+  //listening for keydown on each button
+  //keydown and not keypress because keypress is deprecated and keydown fires for every key reliably
+  buttons.forEach((btn, index) => {
+    btn.addEventListener("keydown", (e) => {
+      //we only care about arrow keys
+      //anything else will return early
+      if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
+
+      //prevents the page from scrolling horizontally when user presses arrow keys
+      e.preventDefault();
+
+      let nextIndex;
+
+      if (e.key === "ArrowRight") {
+        //means move forward. % operator wraps around:
+        //if index is the last button (buttons.length -1)
+        //adding 1 and taking % brings us back to 0
+        nextIndex = (index + 1) % buttons.length;
+      } else if (e.key === "ArrowLeft") {
+        //move backward, adding buttons.length before subtracting
+        //prevent negative index
+        nextIndex = (index - 1 + buttons.length) % buttons.length;
+      } else if (e.key === "Home") {
+        //jump to first
+        nextIndex = 0;
+      } else if (e.key === "End") {
+        //jump to last
+        nextIndex = buttons.length - 1;
+      }
+
+      //moving the roving tabindex
+      //remove tabindex="0" from the button that currently has it
+      buttons[index].setAttribute("tabindex", "-1");
+      //give tabindex="0" to the button were moving
+      buttons[nextIndex].setAttribute("tabindex", "0");
+
+      //moving focus
+      //we call .focus() explicitly to move the browser's focus right away
+      buttons[nextIndex].focus();
+    });
+  });
+}
+
 librarySearchBtn.addEventListener("click", searchLibrary);
 librarySearchInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") searchLibrary();
+});
+
+renderFavorites();
+renderHistory();
+renderTeam();
+
+//this function is responsible for updating the URL
+//every view transaction calls this, nothing else touches history.pushState directly.
+function pushState(params, title) {
+  const urlParams = new URLSearchParams(params);
+  history.pushState(
+    //state object mirrors the params
+    Object.fromEntries(urlParams),
+    "",
+    `?${urlParams.toString()}`,
+  );
+  document.title = `${title} - Pokémon Finder`;
+}
+
+//wire up static "Try:" suggestion chips
+const staticSuggestions = document.querySelector(".suggestions");
+initSuggestionKeyNav(staticSuggestions);
+
+//on page load, check if the URL already has a ?pokemon = parm
+//window.location.search is the query string portion of the url
+
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("view") === "library") {
+  //restore the library view
+  showLibrary().then(() => {
+    //if we had a search open, we restore it too
+    const search = params.get("search");
+    if (search) showCardPanel(search);
+  });
+} else if (params.get("pokemon")) {
+  //restore the pokemon card view
+  searchInput.value = params.get("pokemon");
+  searchPokemon();
+}
+
+//popstate fires when the user clicks back or forward
+//event.state is the state object we passed to pushState earlier
+window.addEventListener("popstate", (event) => {
+  const state = event.state;
+
+  //no state means the user went back to the beginning before any navigation happened
+  if (!state || Object.keys(state).length === 0) {
+    hideLibrary();
+    pokemonCard.classList.add("hidden");
+    currentPokemon = null;
+    document.title = "Pokémon Finder";
+    return;
+  }
+
+  //library view states
+  if (state.view === "library") {
+    //make sure the library view is visible
+    mainContainer.classList.add("hidden");
+    libraryView.classList.remove("hidden");
+    favoritesToggle.classList.add("hidden");
+    libraryBtn.classList.add("hidden");
+    teamStrip.classList.add("hidden");
+
+    document.title = state.search
+      ? `${state.search} - TCG Cards`
+      : "TCG Library - Pokémon Finder";
+
+    //if there was a search open, re-open it
+    if (state.search) {
+      showCardPanel(state.search);
+    }
+    return;
+  }
+
+  //main pokemon view
+  if (state.pokemon) {
+    //making sure the main view is visible if we were in the library
+    if (!libraryView.classList.contains("hidden")) {
+      hideLibrary();
+    }
+    searchInput.value = state.pokemon;
+    searchPokemon();
+  }
 });
