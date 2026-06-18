@@ -1,3 +1,26 @@
+import {
+  getFavorites,
+  addFavorite,
+  removeFavorite,
+  isFavorite,
+  getTeam,
+  addToTeam,
+  removeFromTeam,
+  isOnTeam,
+  getHistory,
+  saveToHistory,
+  MAX_TEAM,
+} from "./src/store.js";
+
+import {
+  fetchPokemon,
+  fetchSpecies,
+  fetchEvolutionChain,
+  fetchTCGCards,
+  fetchTCGCardsBatch,
+  fetchAllpokemonNames,
+} from "./src/api.js";
+
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const randomBtn = document.getElementById("randomBtn");
@@ -37,6 +60,21 @@ const tcgBtn = document.getElementById("tcg-btn");
 const compareTypeEffectiveness = document.getElementById(
   "compare-type-effectiveness",
 );
+//
+//POKEMON TCG LIBRARY
+//
+
+const libraryBtn = document.getElementById("library-btn");
+const libraryView = document.getElementById("library-view");
+const libraryBack = document.getElementById("library-back");
+const librarySearchInput = document.getElementById("library-search");
+const librarySearchBtn = document.getElementById("library-search-btn");
+const cardPanel = document.getElementById("card-panel");
+const cardPanelBack = document.getElementById("card-panel-back");
+const cardPanelTitle = document.getElementById("card-panel-title");
+const cardGrid = document.getElementById("card-grid");
+const sortSelect = document.getElementById("sort-select");
+const mainContainer = document.querySelector(".container");
 
 // this is the types effectiveness, the data is static so we keep it in the code to avoid unnecessary network round trips
 // "double" means 2× damage to those types
@@ -127,10 +165,29 @@ const mainStats = [
   "special-attack",
   "special-defense",
 ];
+const MAX_POKEMON = 1025;
+const MAX_STAT = 255;
 
-//storage key and limit constants for building teams
-const TEAM_KEY = "pokemon_team";
-const MAX_TEAM = 6;
+const typeColors = {
+  fire: "#ff6b35",
+  water: "#4a90d9",
+  grass: "#5db85d",
+  electric: "#f9c523",
+  psychic: "#f85888",
+  ice: "#96d9d6",
+  dragon: "#7038f8",
+  dark: "#705848",
+  fairy: "#ee99ac",
+  fighting: "#c03028",
+  flying: "#a890f0",
+  poison: "#a040a0",
+  ground: "#e0c068",
+  rock: "#b8a038",
+  bug: "#a8b820",
+  ghost: "#705898",
+  steel: "#b8b8d0",
+  normal: "#a8a878",
+};
 
 //initially we aren't comparing any pokemon
 let compareMode = false;
@@ -152,58 +209,33 @@ function closeDrawerFn() {
   overlay.classList.add("hidden");
 }
 
-favoritesToggle.addEventListener("click", openDrawer);
-closeDrawer.addEventListener("click", closeDrawerFn);
-overlay.addEventListener("click", closeDrawerFn);
-
-//Saving and displaying the favorites
-
-const FAVORITES_KEY = "pokemon_favorites";
-
-//using DRY principle on the getFavorites() function
-function getFavorites() {
-  return JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
-}
-
-let currentPokemon = null;
-
+//new toggleFavorite() function
 function toggleFavorite() {
   if (!currentPokemon) return;
 
-  const favorites = getFavorites();
-
-  const alreadyFavorited = favorites.some(
-    (f) => f.name === currentPokemon.name,
-  );
-
-  if (alreadyFavorited) {
-    const updated = favorites.filter((f) => f.name !== currentPokemon.name);
-
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
+  if (isFavorite(currentPokemon.name)) {
+    removeFavorite(currentPokemon.name);
   } else {
-    const newFavorite = {
-      name: currentPokemon.name,
-      id: currentPokemon.id,
-      sprite:
-        currentPokemon.sprites.other["official-artwork"].front_default ||
-        currentPokemon.sprites.front_default,
-    };
-    favorites.push(newFavorite);
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    addFavorite(currentPokemon);
   }
 
   renderFavorites();
   updateFavoriteBtn();
 }
 
+favoritesToggle.addEventListener("click", openDrawer);
+closeDrawer.addEventListener("click", closeDrawerFn);
+overlay.addEventListener("click", closeDrawerFn);
+
+let currentPokemon = null;
+
 function updateFavoriteBtn() {
   if (!currentPokemon) return;
 
-  const favorites = getFavorites();
-  const isFavorited = favorites.some((f) => f.name === currentPokemon.name);
+  const favorited = isFavorite(currentPokemon.name);
 
-  favoriteBtn.textContent = isFavorited ? "❤️ in Favorites" : "🤍 Favorite";
-  favoriteBtn.classList.toggle("favorited", isFavorited);
+  favoriteBtn.textContent = favorited ? "❤️ in Favorites" : "🤍 Favorite";
+  favoriteBtn.classList.toggle("favorited", favorited);
 }
 
 //now to render favorites in the drawer
@@ -243,8 +275,7 @@ function renderFavorites() {
     // clicking the remove button removes just that favorite
     card.querySelector(".remove-favorite").addEventListener("click", (e) => {
       e.stopPropagation();
-      const updated = getFavorites().filter((f) => f.name !== pokemon.name);
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
+      removeFavorite(pokemon.name);
       renderFavorites();
       updateFavoriteBtn();
     });
@@ -255,38 +286,20 @@ function renderFavorites() {
 
 favoriteBtn.addEventListener("click", toggleFavorite);
 
-// helper function to read the team
-function getTeam() {
-  return JSON.parse(localStorage.getItem(TEAM_KEY) || "[]");
-}
-
 //working on functionality of add to team button
 function toggleTeam() {
   if (!currentPokemon) return;
 
-  const team = getTeam();
-  const onTeam = team.some((p) => p.name === currentPokemon.name);
-
-  if (onTeam) {
-    const updated = team.filter((p) => p.name !== currentPokemon.name);
-    localStorage.setItem(TEAM_KEY, JSON.stringify(updated));
+  if (isOnTeam(currentPokemon.name)) {
+    removeFromTeam(currentPokemon.name);
   } else {
-    if (team.length >= MAX_TEAM) {
-      errorDiv.textContent = "Your team is full - remove a Pokémon  first.";
+    const result = addToTeam(currentPokemon);
+    if (result.error) {
+      errorDiv.textContent = result.error;
       errorDiv.classList.remove("hidden");
       setTimeout(() => errorDiv.classList.add("hidden"), 3000);
       return;
     }
-
-    const newMember = {
-      name: currentPokemon.name,
-      id: currentPokemon.id,
-      sprite:
-        currentPokemon.sprites.other["official-artwork"].front_default ||
-        currentPokemon.sprites.front_default,
-    };
-    team.push(newMember);
-    localStorage.setItem(TEAM_KEY, JSON.stringify(team));
   }
 
   renderTeam();
@@ -299,10 +312,8 @@ teamBtn.addEventListener("click", toggleTeam);
 function updateTeamBtn() {
   if (!currentPokemon) return;
 
-  const team = getTeam();
-  const onTeam = team.some((p) => p.name === currentPokemon.name);
-
-  teamBtn.textContent = onTeam ? "On Team!" : "+Add to Team";
+  const onTeam = isOnTeam(currentPokemon.name);
+  teamBtn.textContent = onTeam ? "On Team!" : "+ Add to Team";
   teamBtn.classList.toggle("on-team", onTeam);
 }
 
@@ -331,8 +342,7 @@ function renderTeam() {
       //event to remove pokemon from team
       slot.querySelector(".remove-team").addEventListener("click", (e) => {
         e.stopPropagation();
-        const updated = getTeam().filter((p) => p.name !== team[i].name);
-        localStorage.setItem(TEAM_KEY, JSON.stringify(updated));
+        removeFromTeam(team[i].name);
         renderTeam();
         updateTeamBtn();
       });
@@ -383,29 +393,6 @@ shinyBtn.addEventListener("click", toggleShiny);
 
 const suggestions = document.querySelectorAll(".suggestion");
 
-const MAX_POKEMON = 1025;
-
-const typeColors = {
-  fire: "#ff6b35",
-  water: "#4a90d9",
-  grass: "#5db85d",
-  electric: "#f9c523",
-  psychic: "#f85888",
-  ice: "#96d9d6",
-  dragon: "#7038f8",
-  dark: "#705848",
-  fairy: "#ee99ac",
-  fighting: "#c03028",
-  flying: "#a890f0",
-  poison: "#a040a0",
-  ground: "#e0c068",
-  rock: "#b8a038",
-  bug: "#a8b820",
-  ghost: "#705898",
-  steel: "#b8b8d0",
-  normal: "#a8a878",
-};
-
 //pokemon search
 
 async function searchPokemon() {
@@ -419,13 +406,7 @@ async function searchPokemon() {
   spinner.classList.remove("hidden");
 
   try {
-    const response = await fetch(
-      `https://pokeapi.co/api/v2/pokemon/${searchQuery}`,
-    );
-
-    if (!response.ok) throw new Error("Not found");
-
-    const pokemon = await response.json();
+    const pokemon = await fetchPokemon(searchQuery);
 
     //checking if were in compare mode or not
 
@@ -519,7 +500,7 @@ function displayPokemon(pokemon) {
         <div class="stat">
         <span class="stat-name">${s.stat.name}</span>
         <div class="stat-bar">
-          <div class="stat-bar-fill" style="width: ${(s.base_stat / 255) * 100}%"></div>
+          <div class="stat-bar-fill" style="width: ${(s.base_stat / MAX_STAT) * 100}%"></div>
         </div>
         <span class="stat-value">${s.base_stat}</span>
         </div>
@@ -540,7 +521,7 @@ function displayPokemon(pokemon) {
   renderFavorites();
   updateTeamBtn();
 
-  fetchEvolutionChain(pokemon);
+  loadEvolutionData(pokemon);
 
   renderTypeEffectiveness(pokemon);
 
@@ -669,11 +650,10 @@ suggestions.forEach((btn) => {
 
 //working on fetching the evolution chain
 
-async function fetchEvolutionChain(pokemon) {
+async function loadEvolutionData(pokemon) {
   try {
     //fetching species data
-    const speciesRes = await fetch(pokemon.species.url);
-    const speciesData = await speciesRes.json();
+    const speciesData = await fetchSpecies(pokemon.species.url);
 
     //flavor text
     //we filter for english entries an take the first one because flavor_text_entries is an array of {flavor_text, language, version}
@@ -696,9 +676,7 @@ async function fetchEvolutionChain(pokemon) {
     }
 
     //fetching evolution data
-    const evoRes = await fetch(speciesData.evolution_chain.url);
-    const evoData = await evoRes.json();
-
+    const evoData = await fetchEvolutionChain(speciesData.evolution_chain.url);
     //extracting names by walking the chain
     const chain = [];
     let current = evoData.chain;
@@ -729,8 +707,7 @@ async function displayEvolutionChain(chain) {
     const name = chain[i];
 
     //fetching each pokemon to get its sprite
-    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
-    const data = await res.json();
+    const data = await fetchPokemon(name);
     const sprite =
       data.sprites.other["official-artwork"].front_default ||
       data.sprites.front_default;
@@ -908,65 +885,6 @@ function highlightStats() {
 
 compareBtn.addEventListener("click", toggleCompareMode);
 
-//storing the 5 latest searches locally:
-
-const STORAGE_KEY = "pokemon_history";
-const MAX_ITEMS = 5;
-
-function saveToHistory(query) {
-  const existingData = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-
-  const uniqueItems = [...new Set([query, ...existingData])];
-
-  const trimmedItems = uniqueItems.slice(0, MAX_ITEMS);
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmedItems));
-}
-
-function renderHistory() {
-  const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-
-  historyContainer.innerHTML = "";
-
-  if (history.length === 0) return;
-
-  const label = document.createElement("span");
-  label.textContent = "Recent:";
-  label.classList.add("suggestion-label");
-  historyContainer.appendChild(label);
-
-  history.forEach((query) => {
-    const btn = document.createElement("button");
-    btn.textContent = query;
-    btn.classList.add("suggestion");
-    btn.addEventListener("click", () => {
-      searchInput.value = query;
-      searchPokemon();
-    });
-    historyContainer.appendChild(btn);
-  });
-
-  //re-init keyboard nav every time the history is rebuilt
-  //we call it here because the buttons didn't exist before renderHistory ran
-  initSuggestionKeyNav(historyContainer);
-}
-
-//
-//POKEMON TCG LIBRARY
-//
-const TCG_API_KEY = "867eefaa-71e5-48b8-bd39-98b7cb858f4d";
-const libraryBtn = document.getElementById("library-btn");
-const libraryView = document.getElementById("library-view");
-const libraryBack = document.getElementById("library-back");
-const librarySearchInput = document.getElementById("library-search");
-const librarySearchBtn = document.getElementById("library-search-btn");
-const cardPanel = document.getElementById("card-panel");
-const cardPanelBack = document.getElementById("card-panel-back");
-const cardPanelTitle = document.getElementById("card-panel-title");
-const cardGrid = document.getElementById("card-grid");
-const sortSelect = document.getElementById("sort-select");
-const mainContainer = document.querySelector(".container");
-
 //in-memory store for currently loaded TCG cards.
 let currentTCGCards = [];
 
@@ -1025,29 +943,9 @@ async function showLibrary() {
   cardPanel.classList.remove("hidden");
 
   try {
-    //fetching full list of all names from pokeAPI, getting every single one in one request
-    const pokeRes = await fetch("https://pokeapi.co/api/v2/pokemon?limit=1025");
-    const pokeData = await pokeRes.json();
-
-    //since pokeData.results is an array of object, we only need the names, so we map to extract them
-    const allNames = pokeData.results.map((p) => p.name);
-
-    //shuffling list and taking a slice
-    const picks = shuffleArray(allNames).slice(0, 20);
-
-    //
-    //promise.all fires all fetches at once and waits for every one to finish before continuing
-    const results = await Promise.all(
-      picks.map((name) =>
-        fetch(
-          `https://api.pokemontcg.io/v2/cards?q=name:"${name}"&pageSize=60`,
-          { headers: { "X-Api-Key": TCG_API_KEY } },
-        ).then((r) => r.json()),
-      ),
-    );
-
-    //flattening the result where we merge all result.data arrays into one flat array for the grid.
-    currentTCGCards = results.flatMap((result) => result.data || []);
+    const allNames = await fetchAllpokemonNames();
+    const picks = shuffleArray(allNames).slice(0, 25);
+    currentTCGCards = await fetchTCGCardsBatch(picks);
 
     if (currentTCGCards.length === 0) {
       cardGrid.innerHTML = `<p class="library-empty">No cards loaded.</p>`;
@@ -1098,15 +996,7 @@ async function showCardPanel(pokemonName) {
   cardPanel.classList.remove("hidden");
 
   try {
-    const res = await fetch(
-      `https://api.pokemontcg.io/v2/cards?q=name:"${pokemonName}"&orderBy=-set.releaseDate&pageSize=250`,
-      { headers: { "X-Api-Key": TCG_API_KEY } },
-    );
-
-    if (!res.ok) throw new Error("TCG API error");
-
-    const data = await res.json();
-    currentTCGCards = data.data; //storing all cards in memory
+    currentTCGCards = await fetchTCGCards(pokemonName);
 
     if (currentTCGCards.length === 0) {
       cardGrid.innerHTML = `<p class="library-empty">No TCG cards found for "${pokemonName}".</p>`;
@@ -1346,6 +1236,33 @@ librarySearchBtn.addEventListener("click", searchLibrary);
 librarySearchInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") searchLibrary();
 });
+
+//rendering history
+function renderHistory() {
+  const history = getHistory(); // ← from store.js now
+
+  historyContainer.innerHTML = "";
+
+  if (history.length === 0) return;
+
+  const label = document.createElement("span");
+  label.textContent = "Recent:";
+  label.classList.add("suggestion-label");
+  historyContainer.appendChild(label);
+
+  history.forEach((query) => {
+    const btn = document.createElement("button");
+    btn.textContent = query;
+    btn.classList.add("suggestion");
+    btn.addEventListener("click", () => {
+      searchInput.value = query;
+      searchPokemon();
+    });
+    historyContainer.appendChild(btn);
+  });
+
+  initSuggestionKeyNav(historyContainer);
+}
 
 renderFavorites();
 renderHistory();
