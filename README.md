@@ -34,7 +34,7 @@ Compare type effectiveness — just to make it more clean
 Shareable URLs - biggest learning experience for me today, taught me an interesting concept
 
 06-18-26
-learned and implemented two core concepts into the project:
-ES modules with Vite (import/export).
-Refactored displayPokemon() into units.
-Cloudflare Worker as API proxy (biggest learning experience of the day, really beneficial)
+learned and implemented essential, valuable concepts into the project that were really beneficial:
+
+1) ES modules with Vite (import/export).
+2) Cloudflare Worker as API proxy (biggest challenge and learning experience of the day, really beneficial)
