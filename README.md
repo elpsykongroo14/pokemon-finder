@@ -32,3 +32,9 @@ worked on improving some existing features as well as added some quality of life
 Keyboard nav — to improve accesibility for everyone.
 Compare type effectiveness — just to make it more clean
 Shareable URLs - biggest learning experience for me today, taught me an interesting concept
+
+06-18-26
+learned and implemented two core concepts into the project:
+ES modules with Vite (import/export).
+Refactored displayPokemon() into units.
+Cloudflare Worker as API proxy (biggest learning experience of the day, really beneficial)
