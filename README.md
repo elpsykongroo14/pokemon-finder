@@ -1,40 +1,53 @@
-06-11-26:
-Focused on creating a pokedex sort of website that allows users to look up
-their favorite pokemon, using the pokeapi to access about 1025 different pokemon
-i was able to add a randomizer button, and a toggle shinies button that switches
-between two art sprites, then added an evolution chain as well as a favorites button and implemented local storage to remember the last five viewed pokemon as well as the ones added to favorites too.
+# Pokémon Finder
 
-06-12-26:
-added feature that allows us to build a team of 6 pokemon and prompts an error message if we exceed the limit
+A Pokédex-style web app for looking up any of the 1,025 Pokémon —
+sprites, stats, type matchups, evolution chains, and their official
+TCG cards — built with vanilla JS, Vite, and a Cloudflare Worker proxy.
 
-06-13-2026
-worked mainly on implementing a new feature, where i added a pokemon TCG library that allows us to search for all available cards using https://dev.pokemontcg.io/ api, a sorting system that allows us to sort from newest to oldest and vice versa as well as sorting using rarity, clicking on a card shows use a container with a description of it. Also when first entering said library we shuffle through a number of preselected pokemon and return a selected group to present randomly.
+## Features
 
-06-14-2026
-update and cleaned up the UI, as well as fixing some design flaws, cleaning up dead code and Inconsistencies. 
+- Search by name or ID across all 1,025 Pokémon
+- Random Pokémon button + shiny sprite toggle
+- Full stat bars and an 18×18 type-effectiveness chart (weaknesses,
+  resistances, immunities)
+- Flavor text, height/weight, and abilities
+- Evolution chains, including branching lines like Eevee's 8 evolutions
+- Side-by-side compare mode with stat highlighting
+- Favorites drawer and a 6-slot team builder (persisted via localStorage)
+- Pokémon TCG card library — search, sort by newest/oldest/rarity, and
+  view full card detail
+- Shareable, deep-linkable URLs
+- Keyboard-navigable search suggestions
 
-06-15-2026
-added a few features that improve the user experience such as flavour text that adds a bried description of each pokemon
-as well as the physical attributes describing the weight/height/abilities, then a complex type effectiveness which was
-the most interesting one conceptually, so let's really dig in.
-The mental model: Pokémon has 18 types. Every attacking type deals a certain multiplier against every defending type: 2× (super effective), 0.5× (not very effective), 0× (immune), or 1× (normal). This forms an 18×18 matrix of rules.
-We bake this in as a data structure because:
+## Tech stack
 
-It never changes (it's game data, not live data)
-Fetching it from the API on every search would be wasteful and add latency
-Having it in code means you can read and reason about it directly.
+- Vanilla JavaScript (ES Modules) — no framework
+- Vite for dev/build tooling
+- [PokéAPI](https://pokeapi.co/) for Pokémon data
+- [Pokémon TCG API](https://dev.pokemontcg.io/) for card data, proxied
+  through a Cloudflare Worker so the API key never reaches the client
+- localStorage for favorites, team, and search history
 
-all of these previous features data were all provided by the API.
+## Setup
 
-06-17-26
-worked on improving some existing features as well as added some quality of life improvements such as:
+\`\`\`bash
+git clone <https://github.com/elpsykongroo14/pokemon-finder>
+cd pokemon-finder
+npm install
+npm run dev
+\`\`\`
 
-Keyboard nav — to improve accesibility for everyone.
-Compare type effectiveness — just to make it more clean
-Shareable URLs - biggest learning experience for me today, taught me an interesting concept
+You'll need your own Cloudflare Worker deployed as a proxy for the TCG
+API key — see `/worker` for the source — and point `TCG_PROXY` in
+`src/api.js` at your deployed Worker URL.
 
-06-18-26
-learned and implemented essential, valuable concepts into the project that were really beneficial:
+## What I learned building this
 
-1) ES modules with Vite (import/export).
-2) Cloudflare Worker as API proxy (biggest challenge and learning experience of the day, really beneficial)
+This has been my main project for leveling up as a self-taught dev —
+ES Modules, API proxying, recursion over tree-shaped data, and a lot of
+refactoring discipline. Full build log: [DEVLOG.md](./DEVLOG.md)
+
+## Roadmap
+
+- [ ] CSS component system for buttons
+- [ ] Rebuild in React
