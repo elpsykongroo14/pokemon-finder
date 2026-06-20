@@ -34,8 +34,7 @@ TCG cards — built with vanilla JS, Vite, and a Cloudflare Worker proxy.
 git clone <https://github.com/elpsykongroo14/pokemon-finder>
 cd pokemon-finder
 npm install
-npm run dev
-\`\`\`
+npm run dev\`\`\`
 
 You'll need your own Cloudflare Worker deployed as a proxy for the TCG
 API key — see `/worker` for the source — and point `TCG_PROXY` in
