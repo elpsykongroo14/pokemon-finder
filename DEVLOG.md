@@ -52,6 +52,18 @@ used recursion to walk the full evolution tree instead of just following one
 path.
 
 06-21-26
-1)Fixed variable shadowing bug in showLibrary() error message
-2)Extracted getSpriteUrl() helper to remove duplicated sprite-fallback logic
-3)Refactored button CSS to inclusion-based .btn system, remove !important overrides
+
+1. Fixed variable shadowing bug in showLibrary() error message
+
+2. Extracted getSpriteUrl() helper to remove duplicated sprite-fallback logic
+
+3. Refactored button CSS to inclusion-based .btn system, remove !important overrides
+
+4) spent the rest of the day migrating the app into an actual Vite project (previously it was just loaing js straight in the browser with no build step) the scaffold Vite generates comes with a placeholder demo (a counter button) —
+   had to understand what every piece of that demo was doing before ripping it out,
+   then ported my real files in: store.js, api.js, sprites.js, and the main app file
+   became src/main.js. main lesson here was a relative-path gotcha — my real app
+   expected its helpers one folder down (./src/store.js), but once main.js itself
+   became part of Vite's src/ folder, that nesting needed to be flattened.
+   decided to import the CSS straight from main.js (import "./pokemonfinder.css")
+   instead of a <link> tag, so Vite can hot-reload style changes.
