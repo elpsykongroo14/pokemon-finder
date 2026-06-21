@@ -50,3 +50,8 @@ also fixed the evolution chain so it handles Pokemon with multiple evolutions
 (like Eevee's 8 evolutions) instead of only ever showing the first one —
 used recursion to walk the full evolution tree instead of just following one
 path.
+
+06-21-26
+1)Fixed variable shadowing bug in showLibrary() error message
+2)Extracted getSpriteUrl() helper to remove duplicated sprite-fallback logic
+3)Refactored button CSS to inclusion-based .btn system, remove !important overrides
