@@ -1,6 +1,8 @@
 //single source of truth for all persistent data
 //everything that reads from or writes to localStorage lives here
 
+import { getSpriteUrl } from "./sprites.js";
+
 const FAVORITES_KEY = "pokemon_favorites";
 const TEAM_KEY = "pokemon_team";
 const HISTORY_KEY = "pokemon_history";
@@ -21,9 +23,7 @@ export function addFavorite(pokemon) {
   favorites.push({
     name: pokemon.name,
     id: pokemon.id,
-    sprite:
-      pokemon.sprites.other["official-artwork"].front_default ||
-      pokemon.sprites.front_default,
+    sprite: getSpriteUrl(pokemon.sprites),
   });
   localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
 }
@@ -52,9 +52,7 @@ export function addToTeam(pokemon) {
   team.push({
     name: pokemon.name,
     id: pokemon.id,
-    sprite:
-      pokemon.sprites.other["official-artwork"].front_default ||
-      pokemon.sprites.front_default,
+    sprite: getSpriteUrl(pokemon.sprites),
   });
   localStorage.setItem(TEAM_KEY, JSON.stringify(team));
   return { ok: true };

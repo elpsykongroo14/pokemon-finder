@@ -21,6 +21,8 @@ import {
   fetchAllpokemonNames,
 } from "./src/api.js";
 
+import { getSpriteUrl } from "./src/sprites.js";
+
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const randomBtn = document.getElementById("randomBtn");
@@ -359,9 +361,7 @@ function renderTeam() {
 function toggleShiny() {
   if (!currentSprites) return;
 
-  const shinyUrl =
-    currentSprites.other["official-artwork"].front_shiny ||
-    currentSprites.front_shiny;
+  const shinyUrl = getSpriteUrl(currentSprites, { shiny: true });
 
   if (!shinyUrl && !isShiny) {
     errorDiv.textContent = "No shiny sprite available for this Pokémon.";
@@ -380,11 +380,7 @@ function toggleShiny() {
     pokemonImg.classList.remove("hidden");
   };
 
-  pokemonImg.src = isShiny
-    ? currentSprites.other["official-artwork"].front_shiny ||
-      currentSprites.front_shiny
-    : currentSprites.other["official-artwork"].front_default ||
-      currentSprites.front_default;
+  pokemonImg.src = getSpriteUrl(currentSprites, { shiny: isShiny });
 
   shinyBtn.textContent = isShiny ? "✨ Shiny" : "Toggle Shiny";
 }
@@ -441,9 +437,7 @@ async function searchPokemon() {
 //it does exactly one job: turns data into DOM. no state mutation, no fetches and no side effects outside the element handed
 
 function renderSprite(pokemon, target = pokemonImg) {
-  target.src =
-    pokemon.sprites.other["official-artwork"].front_default ||
-    pokemon.sprites.front_default;
+  target.src = getSpriteUrl(pokemon.sprites);
 }
 
 function renderTypes(pokemon, target = pokemonTypes) {
@@ -719,9 +713,7 @@ async function loadEvolutionData(pokemon) {
 //pulled out of the old loop body - builds one evolution stage element for a single pokemon name
 async function buildStageElement(name) {
   const data = await fetchPokemon(name);
-  const sprite =
-    data.sprites.other["official-artwork"].front_default ||
-    data.sprites.front_default;
+  const sprite = getSpriteUrl(data.sprites);
 
   const stage = document.createElement("div");
   stage.className = "evolution-stage";
