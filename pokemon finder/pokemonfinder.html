@@ -121,10 +121,12 @@
           autocomplete="off"
           spellcheck="false"
         />
-        <button id="searchBtn">Search</button>
+        <button id="searchBtn" class="btn btn-primary">Search</button>
       </div>
 
-      <button class="random-btn" id="randomBtn">Random Pokémon</button>
+      <button class="btn btn-ghost random-btn" id="randomBtn">
+        Random Pokémon
+      </button>
 
       <!-- Static suggestion chips -->
       <div class="suggestions">
@@ -149,14 +151,20 @@
           <div class="types" id="pokemonTypes"></div>
           <div class="pokemon-meta" id="pokemon-meta"></div>
           <p id="flavor-text" class="flavor-text"></p>
-          <button id="shiny-btn">Toggle Shiny</button>
+          <button id="shiny-btn" class="btn btn-ghost">Toggle Shiny</button>
           <div class="stats" id="pokemonStats"></div>
           <h3 class="evolution-title">Evolution Chain</h3>
           <div class="evolution-chain" id="evolution-chain"></div>
           <div id="type-effectiveness" class="type-effectiveness"></div>
-          <button id="favorite-btn" class="favorite-btn">🤍 Favorite</button>
-          <button id="team-btn" class="team-btn">+ Add to Team</button>
-          <button id="tcg-btn" class="tcg-btn">View TCG Cards</button>
+          <button id="favorite-btn" class="btn btn-ghost favorite-btn">
+            🤍 Favorite
+          </button>
+          <button id="team-btn" class="btn btn-ghost btn-ghost--green team-btn">
+            + Add to Team
+          </button>
+          <button id="tcg-btn" class="btn btn-soft-blue tcg-btn">
+            View TCG Cards
+          </button>
         </div>
 
         <!-- Compare card — revealed when compare mode is active -->
@@ -173,7 +181,12 @@
       </div>
 
       <!-- Compare controls — live below the cards -->
-      <button id="compare-btn" class="compare-btn">Compare Mode</button>
+      <button
+        id="compare-btn"
+        class="btn btn-ghost btn-ghost--blue compare-btn"
+      >
+        Compare Mode
+      </button>
       <div id="compare-hint" class="compare-hint hidden"></div>
 
       <!-- Search history chips — rendered by JS -->

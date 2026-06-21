@@ -341,16 +341,14 @@ input:focus {
 }
 
 /* ============================================================
-   BUTTONS — base rule covers non-suggestion buttons
+   BUTTON SYSTEM
+   .btn is the shared shape. Add exactly one variant class
+   (.btn-primary / .btn-ghost / .btn-soft-blue) to set the look.
+   Nothing here targets the bare `button` element — buttons that
+   don't opt in (.suggestion, .close-drawer, etc.) are untouched
    ============================================================ */
-button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
-    .library-back
-  ):not(.card-panel-back):not(.library-search-box button):not(
-    .card-modal-close
-  ) {
+.btn {
   padding: 12px 22px;
-  background: var(--accent);
-  color: #fff;
   border: none;
   border-radius: 10px;
   font-family: inherit;
@@ -359,54 +357,64 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
   cursor: pointer;
   transition:
     background var(--speed),
-    transform var(--speed),
-    box-shadow var(--speed);
+    border-color var(--speed),
+    color var(--speed),
+    transform var(--speed);
 }
-button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
-    .library-back
-  ):not(.card-panel-back):not(.library-search-box button):not(
-    .card-modal-close
-  ):hover {
-  background: var(--accent-deep);
-  transform: translateY(-1px);
-}
-button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
-    .library-back
-  ):not(.card-panel-back):not(.library-search-box button):not(
-    .card-modal-close
-  ):active {
+.btn:active {
   transform: translateY(0);
 }
 
-/* Primary search button */
-#searchBtn {
+/* Solid, filled — the "do the main thing" button */
+.btn-primary {
   background: var(--accent);
   color: #fff;
-  padding: 13px 22px;
-  border-radius: 10px;
-  font-size: 0.88rem;
-  font-weight: 600;
-  white-space: nowrap;
 }
-#searchBtn:hover {
+.btn-primary:hover {
   background: var(--accent-deep);
+  transform: translateY(-1px);
 }
 
-/* Random — ghost style */
-.random-btn {
-  width: 100%;
-  margin-bottom: 20px;
-  background: transparent !important;
-  border: 0.5px solid var(--border-mid) !important;
-  color: var(--text-secondary) !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.01em;
+/* Ghost — transparent, bordered, lights up with an accent on hover.
+   Default accent is orange; color modifiers below swap it. */
+.btn-ghost {
+  background: transparent;
+  border: 0.5px solid var(--border-mid);
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.85rem;
+  padding: 9px 12px;
+  border-radius: 8px;
 }
-.random-btn:hover {
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
-  background: var(--accent-dim) !important;
-  transform: none !important;
+.btn-ghost:hover,
+.btn-ghost.favorited {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+.btn-ghost--green:hover,
+.btn-ghost--green.on-team {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-dim);
+}
+.btn-ghost--blue:hover,
+.btn-ghost--blue.active {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-dim);
+}
+
+/* Soft-filled — light tinted background, used for "View TCG Cards" */
+.btn-soft-blue {
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  font-size: 0.85rem;
+}
+.btn-soft-blue:hover {
+  background: rgba(74, 158, 255, 0.2);
+  border-color: rgba(74, 158, 255, 0.45);
 }
 
 /* ============================================================
@@ -580,10 +588,10 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
 }
 
 .stat-win {
-  color: var(--green) !important;
+  color: var(--green);
 }
 .stat-lose {
-  color: #ff5555 !important;
+  color: #ff5555;
 }
 .stat-bar-fill.win {
   background: var(--green);
@@ -651,39 +659,19 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
    CARD ACTION BUTTONS — shiny / favorite / team / type effectiveness / tcg button
    ============================================================ */
 #shiny-btn {
-  margin-top: 18px;
   width: 100%;
-  background: transparent !important;
-  border: 0.5px solid var(--border-mid) !important;
-  color: var(--text-secondary) !important;
-  font-size: 0.82rem !important;
-  font-weight: 500 !important;
-  padding: 9px !important;
-  border-radius: 8px !important;
+  margin-top: 18px;
 }
 #shiny-btn:hover {
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
-  background: var(--accent-dim) !important;
-  transform: none !important;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+  transform: none;
 }
 
 .favorite-btn {
-  margin-top: 10px;
   width: 100%;
-  background: transparent;
-  border: 0.5px solid var(--border-mid);
-  color: var(--text-secondary);
-  padding: 9px;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    border-color var(--speed),
-    color var(--speed),
-    background var(--speed);
+  margin-top: 10px;
 }
 .favorite-btn:hover {
   border-color: var(--accent);
@@ -696,22 +684,14 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
   color: var(--accent);
 }
 
-.team-btn {
-  margin-top: 8px;
+.random-btn {
   width: 100%;
-  background: transparent;
-  border: 0.5px solid var(--border-mid);
-  color: var(--text-secondary);
-  padding: 9px;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    border-color var(--speed),
-    color var(--speed),
-    background var(--speed);
+  margin-bottom: 20px;
+}
+
+.team-btn {
+  width: 100%;
+  margin-top: 8px;
 }
 .team-btn:hover {
   border-color: var(--green);
@@ -760,18 +740,7 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
 
 .tcg-btn {
   width: 100%;
-  padding: 9px 0;
   margin-top: 6px;
-  background: var(--blue-dim);
-  color: var(--blue);
-  border: 1px solid rgba(74, 158, 255, 0.25);
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    background var(--speed),
-    border-color var(--speed);
 }
 
 .tcg-btn:hover {
@@ -878,19 +847,6 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
 .compare-btn {
   width: 100%;
   margin-top: 16px;
-  background: transparent;
-  border: 0.5px solid var(--border-mid);
-  color: var(--text-secondary);
-  border-radius: 10px;
-  padding: 11px;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    border-color var(--speed),
-    color var(--speed),
-    background var(--speed);
 }
 .compare-btn:hover {
   border-color: var(--blue);
@@ -1095,20 +1051,20 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
   box-shadow: 0 0 0 3px var(--blue-dim);
 }
 .library-search-box button {
-  background: var(--blue) !important;
-  border: none !important;
-  color: #fff !important;
-  padding: 7px 16px !important;
-  border-radius: 8px !important;
+  background: var(--blue);
+  border: none;
+  color: #fff;
+  padding: 7px 16px;
+  border-radius: 8px;
   cursor: pointer;
   font-family: inherit;
-  font-size: 0.82rem !important;
-  font-weight: 500 !important;
+  font-size: 0.82rem;
+  font-weight: 500;
   transition: opacity var(--speed);
 }
 .library-search-box button:hover {
   opacity: 0.85;
-  transform: none !important;
+  transform: none;
 }
 
 /* ============================================================
@@ -1371,7 +1327,7 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
    UTILITIES
    ============================================================ */
 .hidden {
-  display: none !important;
+  display: none;
 }
 
 /* ============================================================
@@ -1385,7 +1341,7 @@ button:not(.suggestion):not(.remove-favorite):not(.close-drawer):not(
     flex-direction: column;
   }
   #searchBtn {
-    width: 100%;
+    white-space: nowrap;
   }
   #cards-wrapper.comparing {
     grid-template-columns: 1fr;
