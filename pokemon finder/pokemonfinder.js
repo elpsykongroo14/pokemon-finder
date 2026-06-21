@@ -967,7 +967,7 @@ async function showLibrary() {
     if (err instanceof TypeError) {
       cardGrid.innerHTML = `<p class="library-empty">Network error — check your connection.</p>`;
     } else {
-      cardGrid.innerHTML = `<p class="library-empty">Failed to load cards for "${pokemonName}".</p>`;
+      cardGrid.innerHTML = `<p class="library-empty">Failed to load featured cards. Try again.</p>`;
     }
   }
 }
