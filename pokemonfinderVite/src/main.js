@@ -25,6 +25,8 @@ import {
 
 import { getSpriteUrl } from "./sprites.js";
 
+import { getCurrentPokemon, setCurrentPokemon } from "./state.js";
+
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const randomBtn = document.getElementById("randomBtn");
@@ -215,6 +217,7 @@ function closeDrawerFn() {
 
 //new toggleFavorite() function
 function toggleFavorite() {
+  const currentPokemon = getCurrentPokemon();
   if (!currentPokemon) return;
 
   if (isFavorite(currentPokemon.name)) {
@@ -231,9 +234,8 @@ favoritesToggle.addEventListener("click", openDrawer);
 closeDrawer.addEventListener("click", closeDrawerFn);
 overlay.addEventListener("click", closeDrawerFn);
 
-let currentPokemon = null;
-
 function updateFavoriteBtn() {
+  const currentPokemon = getCurrentPokemon();
   if (!currentPokemon) return;
 
   const favorited = isFavorite(currentPokemon.name);
@@ -292,6 +294,7 @@ favoriteBtn.addEventListener("click", toggleFavorite);
 
 //working on functionality of add to team button
 function toggleTeam() {
+  const currentPokemon = getCurrentPokemon();
   if (!currentPokemon) return;
 
   if (isOnTeam(currentPokemon.name)) {
@@ -314,6 +317,7 @@ teamBtn.addEventListener("click", toggleTeam);
 
 //updating the button text and style depending on if a pokemon is on the team or not
 function updateTeamBtn() {
+  const currentPokemon = getCurrentPokemon();
   if (!currentPokemon) return;
 
   const onTeam = isOnTeam(currentPokemon.name);
@@ -394,6 +398,7 @@ const suggestions = document.querySelectorAll(".suggestion");
 //pokemon search
 
 async function searchPokemon() {
+  const currentPokemon = getCurrentPokemon();
   const searchQuery = searchInput.value.trim().toLowerCase();
   if (!searchQuery) return;
 
@@ -518,6 +523,7 @@ function renderStats(pokemon, target = pokemonStats) {
 //displaying the pokemon
 
 function displayPokemon(pokemon) {
+  const currentPokemon = getCurrentPokemon();
   //rendering: pokemon data -> DOM
   renderSprite(pokemon);
   pokemonName.textContent = pokemon.name;
@@ -527,7 +533,7 @@ function displayPokemon(pokemon) {
   pokemonId.textContent = `#${String(pokemon.id).padStart(3, "0")}`;
 
   //state: this is now "the currently displayed pokemon"
-  currentPokemon = pokemon;
+  setCurrentPokemon(pokemon);
   currentSprites = pokemon.sprites;
   isShiny = false;
   shinyBtn.textContent = "Toggle Shiny";
@@ -627,6 +633,7 @@ function renderTypeEffectiveness(pokemon, target = typeEffectiveness) {
 
 //getting the tcg of a specific pokemon
 tcgBtn.addEventListener("click", () => {
+  const currentPokemon = getCurrentPokemon();
   if (!currentPokemon) return;
 
   //navigating to the library view
@@ -768,6 +775,7 @@ async function displayEvolutionChain(tree) {
 //toggling the compare Mode OFF/ON:
 
 function toggleCompareMode() {
+  const currentPokemon = getCurrentPokemon();
   compareMode = !compareMode;
 
   compareBtn.classList.toggle("active", compareMode);
@@ -822,6 +830,7 @@ function toggleCompareMode() {
 //now to display the compared pokemon
 
 function displayComparedPokemon(pokemon) {
+  const currentPokemon = getCurrentPokemon();
   errorDiv.classList.add("hidden");
 
   if (pokemon.id === currentPokemon.id) {
@@ -850,6 +859,7 @@ function displayComparedPokemon(pokemon) {
 //we are going to loop through the stats and compare them after both pokemon are loaded
 
 function highlightStats() {
+  const currentPokemon = getCurrentPokemon();
   if (!currentPokemon || !comparePokemon) return;
 
   mainStats.forEach((statName, index) => {
@@ -967,6 +977,7 @@ async function showLibrary() {
 }
 
 function hideLibrary() {
+  const currentPokemon = getCurrentPokemon();
   libraryView.classList.add("hidden");
   mainContainer.classList.remove("hidden");
 
@@ -1316,7 +1327,7 @@ window.addEventListener("popstate", (event) => {
   if (!state || Object.keys(state).length === 0) {
     hideLibrary();
     pokemonCard.classList.add("hidden");
-    currentPokemon = null;
+    setCurrentPokemon(pokemon);
     document.title = "Pokémon Finder";
     return;
   }
