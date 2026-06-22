@@ -25,7 +25,13 @@ import {
 
 import { getSpriteUrl } from "./sprites.js";
 
-import { getCurrentPokemon, setCurrentPokemon } from "./state.js";
+import { setCurrentPokemon, getCurrentPokemon } from "./state.js";
+
+import {
+  initFavorites,
+  renderFavorites,
+  updateFavoriteBtn,
+} from "./favorites.js";
 
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
@@ -40,12 +46,6 @@ const pokemonStats = document.getElementById("pokemonStats");
 const spinner = document.getElementById("spinner");
 const historyContainer = document.getElementById("search-history");
 const shinyBtn = document.getElementById("shiny-btn");
-const favoritesToggle = document.getElementById("favorites-toggle");
-const favoritesDrawer = document.getElementById("favorites-drawer");
-const overlay = document.getElementById("overlay");
-const closeDrawer = document.getElementById("close-drawer");
-const favoriteBtn = document.getElementById("favorite-btn");
-const favoritesContainer = document.getElementById("favorites-container");
 const evolutionContainer = document.getElementById("evolution-chain");
 const compareBtn = document.getElementById("compare-btn");
 const compareHint = document.getElementById("compare-hint");
@@ -202,95 +202,6 @@ let comparePokemon = null;
 //initially we aren't displaying any shiny sprites
 let isShiny = false;
 let currentSprites = null;
-
-//opening and closing the drawer
-
-function openDrawer() {
-  favoritesDrawer.classList.add("open");
-  overlay.classList.remove("hidden");
-}
-
-function closeDrawerFn() {
-  favoritesDrawer.classList.remove("open");
-  overlay.classList.add("hidden");
-}
-
-//new toggleFavorite() function
-function toggleFavorite() {
-  const currentPokemon = getCurrentPokemon();
-  if (!currentPokemon) return;
-
-  if (isFavorite(currentPokemon.name)) {
-    removeFavorite(currentPokemon.name);
-  } else {
-    addFavorite(currentPokemon);
-  }
-
-  renderFavorites();
-  updateFavoriteBtn();
-}
-
-favoritesToggle.addEventListener("click", openDrawer);
-closeDrawer.addEventListener("click", closeDrawerFn);
-overlay.addEventListener("click", closeDrawerFn);
-
-function updateFavoriteBtn() {
-  const currentPokemon = getCurrentPokemon();
-  if (!currentPokemon) return;
-
-  const favorited = isFavorite(currentPokemon.name);
-
-  favoriteBtn.textContent = favorited ? "❤️ in Favorites" : "🤍 Favorite";
-  favoriteBtn.classList.toggle("favorited", favorited);
-}
-
-//now to render favorites in the drawer
-
-function renderFavorites() {
-  const favorites = getFavorites();
-
-  favoritesContainer.innerHTML = "";
-
-  if (favorites.length === 0) {
-    favoritesContainer.innerHTML =
-      '<p style="color:#888; text-align:center; padding:20px;">No favorites yet</p>';
-    return;
-  }
-
-  favorites.forEach((pokemon) => {
-    const card = document.createElement("div");
-    card.className = "favorite-card";
-
-    card.innerHTML = `
-      <img src="${pokemon.sprite}" alt="${pokemon.name}" />
-      <div class="favorite-card-info">
-        <div class="favorite-card-name">${pokemon.name}</div>
-        <div class="favorite-card-id">#${String(pokemon.id).padStart(3, "0")}</div>
-      </div>
-      <button class="remove-favorite" data-name="${pokemon.name}">x</button>
-    `;
-
-    // clicking the card searches for that pokemon
-    card.addEventListener("click", (e) => {
-      if (e.target.classList.contains("remove-favorite")) return;
-      searchInput.value = pokemon.name;
-      searchPokemon();
-      closeDrawerFn();
-    });
-
-    // clicking the remove button removes just that favorite
-    card.querySelector(".remove-favorite").addEventListener("click", (e) => {
-      e.stopPropagation();
-      removeFavorite(pokemon.name);
-      renderFavorites();
-      updateFavoriteBtn();
-    });
-
-    favoritesContainer.appendChild(card);
-  });
-}
-
-favoriteBtn.addEventListener("click", toggleFavorite);
 
 //working on functionality of add to team button
 function toggleTeam() {
@@ -1279,9 +1190,14 @@ function renderHistory() {
   initSuggestionKeyNav(historyContainer);
 }
 
+//setup calls
 renderFavorites();
 renderHistory();
 renderTeam();
+initFavorites((name) => {
+  searchInput.value = name;
+  searchPokemon();
+});
 
 //this function is responsible for updating the URL
 //every view transaction calls this, nothing else touches history.pushState directly.
