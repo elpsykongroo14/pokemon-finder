@@ -703,7 +703,7 @@ async function loadEvolutionData(pokemon) {
       return;
     }
 
-    displayEvolutionChain(tree);
+    await displayEvolutionChain(tree);
   } catch (error) {
     evolutionContainer.innerHTML = "";
   }
