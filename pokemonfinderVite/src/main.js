@@ -451,6 +451,7 @@ function displayPokemon(pokemon) {
   document.title = `${pokemon.name} - Pokémon  Finder`;
   updateFavoriteBtn();
   renderFavorites();
+  updateTeamBtn();
 
   //triggers further async work
   loadEvolutionData(pokemon);
