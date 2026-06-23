@@ -1,10 +1,6 @@
 import "./styles.css";
 
 import {
-  getFavorites,
-  addFavorite,
-  removeFavorite,
-  isFavorite,
   getTeam,
   addToTeam,
   removeFromTeam,
@@ -56,6 +52,8 @@ const compareId = document.getElementById("compareId");
 const compareTypes = document.getElementById("compareTypes");
 const compareStats = document.getElementById("compareStats");
 const evolutionSection = document.querySelector(".evolution-title");
+const favoritesToggle = document.getElementById("favorites-toggle");
+const favoriteBtn = document.getElementById("favorite-btn");
 const teamStrip = document.getElementById("team-strip");
 const teamSlots = document.getElementById("team-slots");
 const teamBtn = document.getElementById("team-btn");
@@ -434,7 +432,6 @@ function renderStats(pokemon, target = pokemonStats) {
 //displaying the pokemon
 
 function displayPokemon(pokemon) {
-  const currentPokemon = getCurrentPokemon();
   //rendering: pokemon data -> DOM
   renderSprite(pokemon);
   pokemonName.textContent = pokemon.name;
@@ -1243,7 +1240,7 @@ window.addEventListener("popstate", (event) => {
   if (!state || Object.keys(state).length === 0) {
     hideLibrary();
     pokemonCard.classList.add("hidden");
-    setCurrentPokemon(pokemon);
+    setCurrentPokemon(null);
     document.title = "Pokémon Finder";
     return;
   }
