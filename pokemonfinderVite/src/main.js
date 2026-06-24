@@ -1,14 +1,6 @@
 import "./styles.css";
 
-import {
-  getTeam,
-  addToTeam,
-  removeFromTeam,
-  isOnTeam,
-  getHistory,
-  saveToHistory,
-  MAX_TEAM,
-} from "./store.js";
+import { getHistory, saveToHistory } from "./store.js";
 
 import {
   fetchPokemon,
@@ -22,6 +14,8 @@ import {
 import { getSpriteUrl } from "./sprites.js";
 
 import { setCurrentPokemon, getCurrentPokemon } from "./state.js";
+
+import { initTeam, renderTeam, updateTeamBtn } from "./team.js";
 
 import {
   initFavorites,
@@ -55,7 +49,6 @@ const evolutionSection = document.querySelector(".evolution-title");
 const favoritesToggle = document.getElementById("favorites-toggle");
 const favoriteBtn = document.getElementById("favorite-btn");
 const teamStrip = document.getElementById("team-strip");
-const teamSlots = document.getElementById("team-slots");
 const teamBtn = document.getElementById("team-btn");
 const flavorText = document.getElementById("flavor-text");
 const pokemonMeta = document.getElementById("pokemon-meta");
@@ -200,77 +193,6 @@ let comparePokemon = null;
 //initially we aren't displaying any shiny sprites
 let isShiny = false;
 let currentSprites = null;
-
-//working on functionality of add to team button
-function toggleTeam() {
-  const currentPokemon = getCurrentPokemon();
-  if (!currentPokemon) return;
-
-  if (isOnTeam(currentPokemon.name)) {
-    removeFromTeam(currentPokemon.name);
-  } else {
-    const result = addToTeam(currentPokemon);
-    if (result.error) {
-      errorDiv.textContent = result.error;
-      errorDiv.classList.remove("hidden");
-      setTimeout(() => errorDiv.classList.add("hidden"), 3000);
-      return;
-    }
-  }
-
-  renderTeam();
-  updateTeamBtn();
-}
-
-teamBtn.addEventListener("click", toggleTeam);
-
-//updating the button text and style depending on if a pokemon is on the team or not
-function updateTeamBtn() {
-  const currentPokemon = getCurrentPokemon();
-  if (!currentPokemon) return;
-
-  const onTeam = isOnTeam(currentPokemon.name);
-  teamBtn.textContent = onTeam ? "On Team!" : "+ Add to Team";
-  teamBtn.classList.toggle("on-team", onTeam);
-}
-
-//rendering pokemon on team
-function renderTeam() {
-  const team = getTeam();
-  teamSlots.innerHTML = "";
-
-  for (let i = 0; i < MAX_TEAM; i++) {
-    const slot = document.createElement("div");
-    slot.className = "team-slot";
-
-    if (team[i]) {
-      //a filled slot
-      slot.classList.add("filled");
-      slot.innerHTML = `
-            <img src="${team[i].sprite}" alt="${team[i].name}" />
-            <button class="remove-team">X</button>
-            `;
-      //clicking on the sprite will allow us to search for the pokemon
-      slot.querySelector("img").addEventListener("click", () => {
-        searchInput.value = team[i].name;
-        searchPokemon();
-      });
-
-      //event to remove pokemon from team
-      slot.querySelector(".remove-team").addEventListener("click", (e) => {
-        e.stopPropagation();
-        removeFromTeam(team[i].name);
-        renderTeam();
-        updateTeamBtn();
-      });
-    } else {
-      //if its an empty slot
-      slot.innerHTML = `<span class="slot-empty">+</span>`;
-    }
-    teamSlots.appendChild(slot);
-  }
-  updateTeamBtn();
-}
 
 //toggling shiny version
 function toggleShiny() {
@@ -709,6 +631,7 @@ function toggleCompareMode() {
     evolutionSection.classList.remove("hidden");
     evolutionContainer.classList.remove("hidden");
     teamBtn.classList.remove("hidden");
+    teamStrip.classList.remove("hidden");
     cardsWrapper.classList.remove("comparing");
 
     flavorText.classList.remove("hidden");
@@ -727,6 +650,7 @@ function toggleCompareMode() {
     cardsWrapper.classList.add("comparing");
     compareHint.classList.remove("hidden");
     teamBtn.classList.add("hidden");
+    teamStrip.classList.add("hidden");
     compareHint.textContent = currentPokemon
       ? `⚔️ Now search a second Pokémon  to compare with ${currentPokemon.name}`
       : "⚔️ Search a Pokémon to start comparing";
@@ -1192,10 +1116,12 @@ function renderHistory() {
 renderFavorites();
 renderHistory();
 renderTeam();
-initFavorites((name) => {
+function selectPokemon(name) {
   searchInput.value = name;
   searchPokemon();
-});
+}
+initFavorites(selectPokemon);
+initTeam(selectPokemon);
 
 //this function is responsible for updating the URL
 //every view transaction calls this, nothing else touches history.pushState directly.

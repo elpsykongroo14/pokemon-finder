@@ -67,3 +67,18 @@ path.
    became part of Vite's src/ folder, that nesting needed to be flattened.
    decided to import the CSS straight from main.js (import "./pokemonfinder.css")
    instead of a <link> tag, so Vite can hot-reload style changes.
+
+06-23-26/ 06-24-26
+started breaking main.js up into seperate feature fi;es instead of one giant file.
+first one done: pulled currentPokemon out into its own state.js file with getCurrentPokemon()/setCurrentPokemon() functions, then extracted all the
+favorites logic (toggleFavorite, renderFavorites, updateFavoriteBtn) into
+favorites.js.
+
+biggest concept today: circular imports, favorites.js needs to trigger a search when a favorited pokemon is clicked it cant just import searchPokemon from main.js because main.js already imports favorites.js.
+fixed it with a callback: main.js hands favorites.js a function to call (initFavorites(onSelect)) instead of favorites.js reaching into main.js directly, same concept applied to team.js
+
+found and fixed a few bugs after the first pass: leftover unused imports in
+main.js, a deleted DOM reference (teamBtn/favoriteBtn) that was still needed
+for hiding buttons during compare mode, and a real bug in the back-button
+handler — was calling setCurrentPokemon(pokemon) with a pokemon variable
+that didn't even exist in that scope, fixed to setCurrentPokemon(null).
