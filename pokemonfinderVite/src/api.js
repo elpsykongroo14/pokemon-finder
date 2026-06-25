@@ -3,7 +3,6 @@
 
 //base URLs
 const POKE_API = "https://pokeapi.co/api/v2";
-const TCG_API = "https://api.pokemontcg.io/v2";
 
 const TCG_PROXY = "https://tcg-proxy.tcg-proxy.workers.dev";
 

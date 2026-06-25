@@ -545,7 +545,8 @@ async function loadEvolutionData(pokemon) {
 
     await displayEvolutionChain(tree);
   } catch (error) {
-    evolutionContainer.innerHTML = "";
+    console.error("Failed to load evolution chain:", error);
+    evolutionContainer.innerHTML = `<p class="no-evolution">Couldn't load evolution data.</p>`;
   }
 }
 
@@ -631,7 +632,6 @@ function toggleCompareMode() {
     evolutionSection.classList.remove("hidden");
     evolutionContainer.classList.remove("hidden");
     teamBtn.classList.remove("hidden");
-    teamStrip.classList.remove("hidden");
     cardsWrapper.classList.remove("comparing");
 
     flavorText.classList.remove("hidden");
@@ -650,7 +650,6 @@ function toggleCompareMode() {
     cardsWrapper.classList.add("comparing");
     compareHint.classList.remove("hidden");
     teamBtn.classList.add("hidden");
-    teamStrip.classList.add("hidden");
     compareHint.textContent = currentPokemon
       ? `⚔️ Now search a second Pokémon  to compare with ${currentPokemon.name}`
       : "⚔️ Search a Pokémon to start comparing";
