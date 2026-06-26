@@ -12,5 +12,11 @@ export default [
       globals: { ...globals.browser }, // tells ESLint that `document`, `window`,
     }, // `localStorage` etc. legitimately exist
   },
+  {
+    files: ["**/*.test.js"],
+    languageOptions: {
+      globals: { ...globals.vitest, ...globals.node },
+    },
+  },
   prettierConfig, // turns off ESLint's own formatting opinions
 ]; // so it never fights Prettier over style

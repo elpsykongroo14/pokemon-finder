@@ -12,6 +12,13 @@ const TCG_PROXY = "https://tcg-proxy.tcg-proxy.workers.dev";
 //value: the full api response object
 const pokeCache = {};
 
+//exported so test can reset cache state between runs - see api.test.js
+//(the app itself never needs to call this; pokemon data never changes
+//within a session, so the cache is menat to live for the app's whole life)
+export function clearPokeCache() {
+  for (const key in pokeCache) delete pokeCache[key];
+}
+
 //----
 //Helper
 //a private helper that all functions use
