@@ -37,7 +37,7 @@ describe("fetchPokemon", () => {
   it("throws when the response is not ok", async () => {
     global.fetch.mockResolvedValue(fakeResponse(false, {}));
     await expect(fetchPokemon("not-a-real-pokemon")).rejects.toThrow(
-      "/HTTP 404/",
+      /HTTP 404/,
     );
   });
 
@@ -64,6 +64,9 @@ describe("fetchSpecies", () => {
 
 describe("fetchTCGCards", () => {
   it("returns the data array from the response", async () => {
+    global.fetch.mockResolvedValue(
+      fakeResponse(true, { data: [{ id: "card-1" }] }),
+    );
     const cards = await fetchTCGCards("pikachu");
     expect(cards).toEqual([{ id: "card-1" }]);
   });

@@ -41,7 +41,7 @@ describe("favorites", () => {
 
   it("removes a favorite", () => {
     addFavorite(makePokemon("pikachu", 25));
-    (removeFavorite("pikachu"), expect(getFavorites()).toBe([]));
+    (removeFavorite("pikachu"), expect(getFavorites()).toEqual([]));
   });
 });
 
@@ -55,7 +55,8 @@ describe("team", () => {
   it("refuses to add the same pokemon twice", () => {
     addToTeam(makePokemon("charmander", 4));
     const result = addToTeam(makePokemon("charmander", 4));
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ error: "Already on team" });
+    expect(getTeam()).toHaveLength(1);
   });
 
   it("refuses to add a 7th pokemon once the team is full", () => {
