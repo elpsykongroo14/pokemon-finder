@@ -41,7 +41,8 @@ describe("favorites", () => {
 
   it("removes a favorite", () => {
     addFavorite(makePokemon("pikachu", 25));
-    (removeFavorite("pikachu"), expect(getFavorites()).toEqual([]));
+    removeFavorite("pikachu");
+    expect(getFavorites()).toEqual([]);
   });
 });
 
