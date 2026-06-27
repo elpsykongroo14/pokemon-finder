@@ -13,6 +13,14 @@ import {
 
 import { getSpriteUrl } from "./sprites.js";
 
+import {
+  renderSprite,
+  renderTypes,
+  renderMeta,
+  renderStats,
+  renderTypeEffectiveness,
+} from "./render.js";
+
 import { setCurrentPokemon, getCurrentPokemon } from "./state.js";
 
 import { initTeam, renderTeam, updateTeamBtn } from "./team.js";
@@ -22,6 +30,13 @@ import {
   renderFavorites,
   updateFavoriteBtn,
 } from "./favorites.js";
+
+import {
+  initCompareMode,
+  isCompareMode,
+  displayComparedPokemon,
+  announceFirstPick,
+} from "./comparemode.js";
 
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
@@ -37,26 +52,12 @@ const spinner = document.getElementById("spinner");
 const historyContainer = document.getElementById("search-history");
 const shinyBtn = document.getElementById("shiny-btn");
 const evolutionContainer = document.getElementById("evolution-chain");
-const compareBtn = document.getElementById("compare-btn");
-const compareHint = document.getElementById("compare-hint");
-const compareCard = document.getElementById("compare-card");
-const compareImg = document.getElementById("compareImg");
-const compareName = document.getElementById("compareName");
-const compareId = document.getElementById("compareId");
-const compareTypes = document.getElementById("compareTypes");
-const compareStats = document.getElementById("compareStats");
-const evolutionSection = document.querySelector(".evolution-title");
 const favoritesToggle = document.getElementById("favorites-toggle");
-const favoriteBtn = document.getElementById("favorite-btn");
 const teamStrip = document.getElementById("team-strip");
-const teamBtn = document.getElementById("team-btn");
 const flavorText = document.getElementById("flavor-text");
 const pokemonMeta = document.getElementById("pokemon-meta");
 const typeEffectiveness = document.getElementById("type-effectiveness");
 const tcgBtn = document.getElementById("tcg-btn");
-const compareTypeEffectiveness = document.getElementById(
-  "compare-type-effectiveness",
-);
 //
 //POKEMON TCG LIBRARY
 //
@@ -73,122 +74,7 @@ const cardGrid = document.getElementById("card-grid");
 const sortSelect = document.getElementById("sort-select");
 const mainContainer = document.querySelector(".container");
 
-// this is the types effectiveness, the data is static so we keep it in the code to avoid unnecessary network round trips
-// "double" means 2× damage to those types
-// "half"   means 0.5× damage to those types
-// "immune" means 0× damage to those types
-// Omitted = 1× (normal damage)
-const TYPE_CHART = {
-  normal: { immune: ["ghost"], half: ["rock", "steel"] },
-  fire: {
-    double: ["grass", "ice", "bug", "steel"],
-    half: ["fire", "water", "rock", "dragon"],
-  },
-  water: {
-    double: ["fire", "ground", "rock"],
-    half: ["water", "grass", "dragon"],
-  },
-  electric: {
-    double: ["water", "flying"],
-    half: ["electric", "grass", "dragon"],
-    immune: ["ground"],
-  },
-  grass: {
-    double: ["water", "ground", "rock"],
-    half: ["fire", "grass", "poison", "flying", "bug", "dragon", "steel"],
-  },
-  ice: {
-    double: ["grass", "ground", "flying", "dragon"],
-    half: ["water", "ice", "steel"],
-  },
-  fighting: {
-    double: ["normal", "ice", "rock", "dark", "steel"],
-    half: ["poison", "flying", "psychic", "bug", "fairy"],
-    immune: ["ghost"],
-  },
-  poison: {
-    double: ["grass", "fairy"],
-    half: ["poison", "ground", "rock", "ghost"],
-    immune: ["steel"],
-  },
-  ground: {
-    double: ["fire", "electric", "poison", "rock", "steel"],
-    half: ["grass", "bug"],
-    immune: ["flying"],
-  },
-  flying: {
-    double: ["grass", "fighting", "bug"],
-    half: ["electric", "rock", "steel"],
-  },
-  psychic: {
-    double: ["fighting", "poison"],
-    half: ["psychic", "steel"],
-    immune: ["dark"],
-  },
-  bug: {
-    double: ["grass", "psychic", "dark"],
-    half: ["fire", "fighting", "poison", "flying", "ghost", "steel", "fairy"],
-  },
-  rock: {
-    double: ["fire", "ice", "flying", "bug"],
-    half: ["fighting", "ground", "steel"],
-  },
-  ghost: {
-    double: ["psychic", "ghost"],
-    half: ["dark"],
-    immune: ["normal", "fighting"],
-  },
-  dragon: { double: ["dragon"], half: ["steel"], immune: ["fairy"] },
-  dark: {
-    double: ["psychic", "ghost"],
-    half: ["fighting", "dark", "fairy"],
-    immune: [],
-  },
-  steel: {
-    double: ["ice", "rock", "fairy"],
-    half: ["fire", "water", "electric", "steel"],
-  },
-  fairy: {
-    double: ["fighting", "dragon", "dark"],
-    half: ["fire", "poison", "steel"],
-  },
-};
-
-const mainStats = [
-  "hp",
-  "attack",
-  "defense",
-  "speed",
-  "special-attack",
-  "special-defense",
-];
 const MAX_POKEMON = 1025;
-const MAX_STAT = 255;
-
-const typeColors = {
-  fire: "#ff6b35",
-  water: "#4a90d9",
-  grass: "#5db85d",
-  electric: "#f9c523",
-  psychic: "#f85888",
-  ice: "#96d9d6",
-  dragon: "#7038f8",
-  dark: "#705848",
-  fairy: "#ee99ac",
-  fighting: "#c03028",
-  flying: "#a890f0",
-  poison: "#a040a0",
-  ground: "#e0c068",
-  rock: "#b8a038",
-  bug: "#a8b820",
-  ghost: "#705898",
-  steel: "#b8b8d0",
-  normal: "#a8a878",
-};
-
-//initially we aren't comparing any pokemon
-let compareMode = false;
-let comparePokemon = null;
 
 //initially we aren't displaying any shiny sprites
 let isShiny = false;
@@ -233,7 +119,7 @@ async function searchPokemon() {
   const searchQuery = searchInput.value.trim().toLowerCase();
   if (!searchQuery) return;
 
-  if (!compareMode) {
+  if (!isCompareMode()) {
     pokemonCard.classList.add("hidden");
   }
   errorDiv.classList.add("hidden");
@@ -244,7 +130,7 @@ async function searchPokemon() {
 
     //checking if were in compare mode or not
 
-    if (compareMode && currentPokemon) {
+    if (isCompareMode() && currentPokemon) {
       displayComparedPokemon(pokemon);
     } else {
       displayPokemon(pokemon);
@@ -252,8 +138,8 @@ async function searchPokemon() {
       renderHistory();
 
       //update the hint if compare mode is already on
-      if (compareMode) {
-        compareHint.textContent = `⚔️ Now search a second Pokémon to compare with ${pokemon.name}`;
+      if (isCompareMode()) {
+        announceFirstPick(pokemon.name);
       }
     }
     spinner.classList.add("hidden");
@@ -270,96 +156,17 @@ async function searchPokemon() {
   }
 }
 
-//---pure rendering functions
-//each of these takes a pokemon object and (optionally) a target DOM element
-//it does exactly one job: turns data into DOM. no state mutation, no fetches and no side effects outside the element handed
-
-function renderSprite(pokemon, target = pokemonImg) {
-  target.src = getSpriteUrl(pokemon.sprites);
-}
-
-function renderTypes(pokemon, target = pokemonTypes) {
-  target.innerHTML = pokemon.types
-    .map(
-      (t) =>
-        `<span class="type" style="background-color:${typeColors[t.type.name] || "#777"}">${t.type.name}</span>`,
-    )
-    .join("");
-}
-
-function renderMeta(pokemon, target = pokemonMeta) {
-  //displaying the physical info
-  const heightM = (pokemon.height / 10).toFixed(1);
-  const weightKg = (pokemon.weight / 10).toFixed(1);
-
-  //abilities separate normal from hidden
-  //is_hidden is a boolean provided by the api
-  const normalAbilities = pokemon.abilities
-    .filter((a) => !a.is_hidden)
-    .map((a) => a.ability.name)
-    .join(", ");
-
-  const hiddenAbility = pokemon.abilities.find((a) => a.is_hidden);
-
-  target.innerHTML = `
-  <table class="meta-table">
-    <tbody>
-      <tr>
-        <td class="meta-key">Height</td>
-        <td class="meta-val">${heightM} m</td>
-      </tr>
-      <tr>
-        <td class="meta-key">Weight</td>
-        <td class="meta-val">${weightKg} kg</td>
-      </tr>
-      <tr>
-        <td class="meta-key">Abilities</td>
-        <td class="meta-val">${normalAbilities}</td>
-      </tr>
-      ${
-        hiddenAbility
-          ? `
-      <tr>
-        <td class="meta-key">Hidden</td>
-        <td class="meta-val hidden-ability">${hiddenAbility.ability.name}</td>
-      </tr>`
-          : ""
-      }
-    </tbody>
-  </table>
-`;
-}
-
-function renderStats(pokemon, target = pokemonStats) {
-  //driven by the mainStats array, not pokemon.stats' own order
-  //this guarantees index 0 is always hp, index 3 is always speed etc...
-  //which is the guarantee highlighStat() depends on to compare bars by index between two cards
-  target.innerHTML = mainStats
-    .map((statName) => {
-      const stat = pokemon.stats.find((s) => s.stat.name === statName);
-      if (!stat) return;
-      return `
-       <div class="stat">
-        <span class="stat-name">${statName}</span>
-        <div class="stat-bar">
-         <div class= "stat-bar-fill" style="width: ${(stat.base_stat / MAX_STAT) * 100}%"></div>
-        </div>
-        <span class= "stat-value">${stat.base_stat}</span>
-       </div>
-      `;
-    })
-    .join("");
-}
-
 //displaying the pokemon
+//(renderSprite/renderTypes/renderMeta/renderStats/renderTypeEffectiveness now
+//live in render.js - main.js just tells each one exactly where to render)
 
 function displayPokemon(pokemon) {
   //rendering: pokemon data -> DOM
-  renderSprite(pokemon);
+  renderSprite(pokemon, pokemonImg);
   pokemonName.textContent = pokemon.name;
-  renderTypes(pokemon);
-  renderMeta(pokemon);
-  renderStats(pokemon);
+  renderTypes(pokemon, pokemonTypes);
+  renderMeta(pokemon, pokemonMeta);
+  renderStats(pokemon, pokemonStats);
   pokemonId.textContent = `#${String(pokemon.id).padStart(3, "0")}`;
 
   //state: this is now "the currently displayed pokemon"
@@ -377,89 +184,9 @@ function displayPokemon(pokemon) {
 
   //triggers further async work
   loadEvolutionData(pokemon);
-  renderTypeEffectiveness(pokemon);
+  renderTypeEffectiveness(pokemon, typeEffectiveness);
 
   pokemonCard.classList.remove("hidden");
-}
-
-//now to work on the type's weaknesses and strengths
-//we are going to compute how much damage each attacking type deals
-function computeDefensiveChart(pokemonTypes) {
-  //starting every attacking type at 1x multiplier
-  const multipliers = {};
-  Object.keys(TYPE_CHART).forEach((type) => {
-    multipliers[type] = 1;
-  });
-
-  //for each of the types (could be 1 or 2)
-  //loop through every attacking type and adjust the multiplier
-  pokemonTypes.forEach((defendingType) => {
-    Object.keys(TYPE_CHART).forEach((attackingType) => {
-      const chart = TYPE_CHART[attackingType];
-
-      if (chart.double?.includes(defendingType)) {
-        //deals 2x against this defending type
-        multipliers[attackingType] *= 2;
-      } else if (chart.half?.includes(defendingType)) {
-        //deals 0.5x against this defending type
-        multipliers[attackingType] *= 0.5;
-      } else if (chart.immune?.includes(defendingType)) {
-        multipliers[attackingType] *= 0; // 0x = immune;
-      }
-      //if its not listed, multiplier stays at 1x
-    });
-  });
-  return multipliers;
-}
-
-//rendering the type effectiveness
-//target: the dom element to render into
-//it defaults to primary card's element so existing calls like renderTypeEffectiveness(pokemon) still work without passing a second argument
-function renderTypeEffectiveness(pokemon, target = typeEffectiveness) {
-  const pokemonTypes = pokemon.types.map((t) => t.type.name);
-  const multipliers = computeDefensiveChart(pokemonTypes);
-
-  //group the types by their multiplier value
-  const groups = { 4: [], 2: [], 0.5: [], 0.25: [], 0: [] };
-
-  Object.entries(multipliers).forEach(([type, mult]) => {
-    if (mult === 4) groups[4].push(type);
-    if (mult === 2) groups[2].push(type);
-    if (mult === 0.5) groups[0.5].push(type);
-    if (mult === 0.25) groups[0.25].push(type);
-    if (mult === 0) groups[0].push(type);
-  });
-
-  //only rendering groups in HTML
-  const labels = {
-    4: { text: "4× Weak", color: "#e74c3c" },
-    2: { text: "2× Weak", color: "#e8754a" },
-    0.5: { text: "½× Resist", color: "#4a9eff" },
-    0.25: { text: "¼× Resist", color: "#3a7fd4" },
-    0: { text: "Immune", color: "#545a6e" },
-  };
-
-  const rows = Object.entries(groups)
-    .filter(([, types]) => types.length > 0)
-    .map(([mult, types]) => {
-      const { text, color } = labels[mult];
-      const chips = types
-        .map(
-          (t) =>
-            `<span class="type" style="background-color:${typeColors[t] || "#777"}">${t}</span>`,
-        )
-        .join("");
-      return `
-        <div class="effectiveness-row">
-          <span class="effectiveness-label" style="color:${color}">${text}</span>
-          <div class="effectiveness-types">${chips}</div>
-        </div>`;
-    })
-    .join("");
-
-  target.innerHTML = rows
-    ? `<h3 class= "section-label">Type Matchups</h3>${rows}`
-    : "";
 }
 
 //getting the tcg of a specific pokemon
@@ -545,7 +272,8 @@ async function loadEvolutionData(pokemon) {
 
     await displayEvolutionChain(tree);
   } catch (error) {
-    evolutionContainer.innerHTML = "";
+    console.error("Failed to load evolution chain:", error);
+    evolutionContainer.innerHTML = `<p class="no-evolution">Couldn't load evolution data.</p>`;
   }
 }
 
@@ -603,134 +331,16 @@ async function displayEvolutionChain(tree) {
   evolutionContainer.appendChild(rootElement);
 }
 
-//toggling the compare Mode OFF/ON:
-
-function toggleCompareMode() {
-  const currentPokemon = getCurrentPokemon();
-  compareMode = !compareMode;
-
-  compareBtn.classList.toggle("active", compareMode);
-
-  const cardsWrapper = document.getElementById("cards-wrapper");
-  const container = document.querySelector(".container");
-
-  if (!compareMode) {
-    comparePokemon = null;
-
-    compareImg.src = "";
-    compareName.textContent = "";
-    compareId.textContent = "";
-    compareTypes.innerHTML = "";
-    compareStats.innerHTML = "";
-
-    compareCard.classList.add("hidden");
-    compareHint.classList.add("hidden");
-    container.classList.remove("comparing");
-    shinyBtn.classList.remove("hidden");
-    favoriteBtn.classList.remove("hidden");
-    evolutionSection.classList.remove("hidden");
-    evolutionContainer.classList.remove("hidden");
-    teamBtn.classList.remove("hidden");
-    teamStrip.classList.remove("hidden");
-    cardsWrapper.classList.remove("comparing");
-
-    flavorText.classList.remove("hidden");
-    pokemonMeta.classList.remove("hidden");
-    typeEffectiveness.classList.remove("hidden");
-    tcgBtn.classList.remove("hidden");
-    compareTypeEffectiveness.innerHTML = "";
-
-    if (currentPokemon) displayPokemon(currentPokemon);
-  } else {
-    shinyBtn.classList.add("hidden");
-    favoriteBtn.classList.add("hidden");
-    evolutionSection.classList.add("hidden");
-    evolutionContainer.classList.add("hidden");
-    container.classList.add("comparing");
-    cardsWrapper.classList.add("comparing");
-    compareHint.classList.remove("hidden");
-    teamBtn.classList.add("hidden");
-    teamStrip.classList.add("hidden");
-    compareHint.textContent = currentPokemon
-      ? `⚔️ Now search a second Pokémon  to compare with ${currentPokemon.name}`
-      : "⚔️ Search a Pokémon to start comparing";
-    flavorText.classList.add("hidden");
-    pokemonMeta.classList.add("hidden");
-    tcgBtn.classList.add("hidden");
-  }
-}
-
-//now to display the compared pokemon
-
-function displayComparedPokemon(pokemon) {
-  const currentPokemon = getCurrentPokemon();
-  errorDiv.classList.add("hidden");
-
-  if (pokemon.id === currentPokemon.id) {
-    errorDiv.textContent = "Choose a different Pokémon to compare.";
-    errorDiv.classList.remove("hidden");
-    return;
-  }
-
-  comparePokemon = pokemon;
-
-  renderSprite(pokemon, compareImg);
-  compareName.textContent = pokemon.name;
-  compareId.textContent = `#${String(pokemon.id).padStart(3, "0")}`;
-  renderTypes(pokemon, compareTypes);
-  renderStats(pokemon, compareStats);
-
-  compareCard.classList.remove("hidden");
-
-  highlightStats();
-
-  renderTypeEffectiveness(pokemon, compareTypeEffectiveness);
-
-  compareHint.textContent = `${currentPokemon.name} vs ${comparePokemon.name}`;
-}
-
-//we are going to loop through the stats and compare them after both pokemon are loaded
-
-function highlightStats() {
-  const currentPokemon = getCurrentPokemon();
-  if (!currentPokemon || !comparePokemon) return;
-
-  mainStats.forEach((statName, index) => {
-    const p1Stat = currentPokemon.stats.find((s) => s.stat.name === statName);
-    const p2Stat = comparePokemon.stats.find((s) => s.stat.name === statName);
-
-    if (!p1Stat || !p2Stat) return;
-
-    const p1Bar = pokemonStats.querySelectorAll(".stat-bar-fill")[index];
-    const p2Bar = compareStats.querySelectorAll(".stat-bar-fill")[index];
-    const p1StatEl = pokemonStats.querySelectorAll(".stat-value")[index];
-    const p2StatEl = compareStats.querySelectorAll(".stat-value")[index];
-
-    if (p1Stat.base_stat === p2Stat.base_stat) {
-      if (p1StatEl) p1StatEl.className = "stat-value";
-      if (p2StatEl) p2StatEl.className = "stat-value";
-      if (p1Bar) p1Bar.className = "stat-bar-fill";
-      if (p2Bar) p2Bar.className = "stat-bar-fill";
-      return;
-    }
-
-    const p1Wins = p1Stat.base_stat > p2Stat.base_stat;
-
-    //updating main card stats
-
-    if (p1StatEl)
-      p1StatEl.className = `stat-value ${p1Wins ? "stat-win" : "stat-lose"}`;
-    if (p2StatEl)
-      p2StatEl.className = `stat-value ${!p1Wins ? "stat-win" : "stat-lose"}`;
-
-    p1Bar.classList.toggle("win", p1Wins);
-    p1Bar.classList.toggle("lose", !p1Wins);
-    p2Bar.classList.toggle("win", !p1Wins);
-    p2Bar.classList.toggle("lose", p1Wins);
-  });
-}
-
-compareBtn.addEventListener("click", toggleCompareMode);
+//compare mode itself (its state, its own DOM, toggleCompareMode,
+//displayComparedPokemon, highlightStats) now lives in compareMode.js.
+//main.js just hands it the few things it can't own itself.
+initCompareMode({
+  onExitCompare: displayPokemon,
+  renderSprite,
+  renderTypes,
+  renderStats,
+  renderTypeEffectiveness,
+});
 
 //in-memory store for currently loaded TCG cards.
 let currentTCGCards = [];

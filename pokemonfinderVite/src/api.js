@@ -3,7 +3,6 @@
 
 //base URLs
 const POKE_API = "https://pokeapi.co/api/v2";
-const TCG_API = "https://api.pokemontcg.io/v2";
 
 const TCG_PROXY = "https://tcg-proxy.tcg-proxy.workers.dev";
 
@@ -12,6 +11,13 @@ const TCG_PROXY = "https://tcg-proxy.tcg-proxy.workers.dev";
 //key: the pokemon name or id
 //value: the full api response object
 const pokeCache = {};
+
+//exported so test can reset cache state between runs - see api.test.js
+//(the app itself never needs to call this; pokemon data never changes
+//within a session, so the cache is menat to live for the app's whole life)
+export function clearPokeCache() {
+  for (const key in pokeCache) delete pokeCache[key];
+}
 
 //----
 //Helper

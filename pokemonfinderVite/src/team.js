@@ -11,7 +11,7 @@ import { getCurrentPokemon } from "./state.js";
 
 const teamBtn = document.getElementById("team-btn");
 const teamSlots = document.getElementById("team-slots");
-const erroDiv = document.getElementById("error");
+const errorDiv = document.getElementById("error");
 
 //set once by initTeam() - same circular import workaround as favorites.js
 //this lets this module ask "go search for this pokemon" without

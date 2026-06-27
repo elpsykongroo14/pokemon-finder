@@ -82,3 +82,18 @@ main.js, a deleted DOM reference (teamBtn/favoriteBtn) that was still needed
 for hiding buttons during compare mode, and a real bug in the back-button
 handler — was calling setCurrentPokemon(pokemon) with a pokemon variable
 that didn't even exist in that scope, fixed to setCurrentPokemon(null).
+
+06-26-26
+wrote my first unit tests today using Vitest, targeted sprites.js, store.js and api.s
+since they're the only modules with zero DOM dependency
+
+key concepts:
+
+1. AAA pattern (arrange/act/assert)- the shape everly test follows
+2. test isolation - localStorage and module-level state both persist across
+   tests in the same file unless you rest them in beforeEach.
+3. caught a bug by testing -api.js has an in memory cache for fetchPokemon that has no way to rest itself.
+   wrote two tests against the same mocked-fetch pikachu call expecting different result, and the second one silently returned the first test's cached data instead of hitting my new mock.
+   i then added a small clearPokeCache() export just to so tests can get a clean slate - first time a test caught a design problem instead of a logic bug.
+4. mocking - only mock things that are slow/unpredictable (fetch, the network).
+   never mock a deterministic code just because its a dependency
