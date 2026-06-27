@@ -380,6 +380,16 @@ function shuffleArray(arr) {
   return shuffled;
 }
 
+//safe function:
+//it takes a plain text message and css class then safely puts it into cardGrid no matter what the message contains
+function setCardGridMessage(text, className) {
+  cardGrid.innerHTML = "";
+  const p = document.createElement("P");
+  p.className = className;
+  p.textContent = text;
+  cardGrid.appendChild(p);
+}
+
 //the following functions are SPA navigation functions, toggling visibility using css instead of reloading the page
 async function showLibrary() {
   mainContainer.classList.add("hidden");
@@ -450,23 +460,33 @@ async function showCardPanel(pokemonName) {
   );
 
   cardPanelTitle.textContent = pokemonName;
-  cardGrid.innerHTML = `<p class="library-loading">Loading cards...</p>`;
+  cardPanelTitle.textContent = pokemonName;
+  setCardGridMessage("Loading cards...", "library-loading");
   cardPanel.classList.remove("hidden");
 
   try {
     currentTCGCards = await fetchTCGCards(pokemonName);
 
     if (currentTCGCards.length === 0) {
-      cardGrid.innerHTML = `<p class="library-empty">No TCG cards found for "${pokemonName}".</p>`;
+      setCardGridMessage(
+        `No TCG cards found for "${pokemonName}".`,
+        "library-empty",
+      );
       return;
     }
 
     renderCardGrid(getSortedCards());
   } catch (err) {
     if (err instanceof TypeError) {
-      cardGrid.innerHTML = `<p class="library-empty">Network error — check your connection.</p>`;
+      setCardGridMessage(
+        "Network error - check your connection.",
+        "library-empty",
+      );
     } else {
-      cardGrid.innerHTML = `<p class="library-empty">Failed to load cards for "${pokemonName}".</p>`;
+      setCardGridMessage(
+        `Failed to load cards for "${pokemonName}".`,
+        "library-empty",
+      );
     }
   }
 }
