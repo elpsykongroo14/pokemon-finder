@@ -384,7 +384,7 @@ function shuffleArray(arr) {
 //it takes a plain text message and css class then safely puts it into cardGrid no matter what the message contains
 function setCardGridMessage(text, className) {
   cardGrid.innerHTML = "";
-  const p = document.createElement("P");
+  const p = document.createElement("p");
   p.className = className;
   p.textContent = text;
   cardGrid.appendChild(p);
@@ -459,7 +459,6 @@ async function showCardPanel(pokemonName) {
     `${pokemonName} - TCG Cards`,
   );
 
-  cardPanelTitle.textContent = pokemonName;
   cardPanelTitle.textContent = pokemonName;
   setCardGridMessage("Loading cards...", "library-loading");
   cardPanel.classList.remove("hidden");
