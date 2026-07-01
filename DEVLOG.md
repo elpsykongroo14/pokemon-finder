@@ -97,3 +97,37 @@ key concepts:
    i then added a small clearPokeCache() export just to so tests can get a clean slate - first time a test caught a design problem instead of a logic bug.
 4. mocking - only mock things that are slow/unpredictable (fetch, the network).
    never mock a deterministic code just because its a dependency
+
+07-01-26
+fixed a real security bug today: reflected XSS in showCardPanel(). pokemonName
+was coming straight from the URL (?search=...) and getting spliced directly into
+innerHTML — meaning anyone could craft a link with a script tag in it and have it
+execute in a visitor's browser automatically on page load.
+
+fix: wrote a setCardGridMessage(text, className) helper that builds the <p> node
+with document.createElement and sets the message via textContent instead of innerHTML.
+textContent never runs the HTML parser, so the string is always treated as plain
+text no matter what it contains. replaced every cardGrid status message
+(loading, empty, error) with it, so there's now one safe path instead of six
+independent chances to get it wrong.
+
+also knocked out the last two test files:
+
+team.test.js — 5 tests
+
+- empty state renders 6 slots
+- clicking team btn adds pokemon and updates btn text/class
+- team full path: shows error message, auto-hides after 3s (used vi.useFakeTimers
+  so the test doesn't actually wait 3 real seconds — fake timers let you advance
+  the clock manually)
+- remove button removes from team and clears the slot from the DOM
+- clicking a filled slot's image fires the onSelectPokemon callback
+  with the right name (tested with vi.fn() spy, proved the DI wiring works)
+
+favorites.test.js — 5 tests
+
+- empty state shows the no-favorites message
+- favorite btn toggles correctly
+- drawer open/close — tested all 3 close paths (close btn, overlay click, card select)
+- remove button removes card without triggering onSelectPokemon
+- clicking a card fires onSelectPokemon and closes the drawer
