@@ -21,7 +21,7 @@ import {
   renderTypeEffectiveness,
 } from "./render.js";
 
-import { setCurrentPokemon, getCurrentPokemon } from "./state.js";
+import { setCurrentPokemon, getCurrentPokemon, pushState } from "./state.js";
 
 import { initTeam, renderTeam, updateTeamBtn } from "./team.js";
 
@@ -751,19 +751,6 @@ function selectPokemon(name) {
 }
 initFavorites(selectPokemon);
 initTeam(selectPokemon);
-
-//this function is responsible for updating the URL
-//every view transaction calls this, nothing else touches history.pushState directly.
-function pushState(params, title) {
-  const urlParams = new URLSearchParams(params);
-  history.pushState(
-    //state object mirrors the params
-    Object.fromEntries(urlParams),
-    "",
-    `?${urlParams.toString()}`,
-  );
-  document.title = `${title} - Pokémon Finder`;
-}
 
 //wire up static "Try:" suggestion chips
 const staticSuggestions = document.querySelector(".suggestions");
