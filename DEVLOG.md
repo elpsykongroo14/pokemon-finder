@@ -131,3 +131,19 @@ favorites.test.js — 5 tests
 - drawer open/close — tested all 3 close paths (close btn, overlay click, card select)
 - remove button removes card without triggering onSelectPokemon
 - clicking a card fires onSelectPokemon and closes the drawer
+
+07-02-26 — moved pushState into state.js
+
+- What moved: pushState(params, title) — was living somewhere it caused a coupling problem, now lives in state.js alongside currentPokemon/getCurrentPokemon/setCurrentPokemon.
+
+- Why: every feature module (favorites, team, compareMode, tcgLibrary) needs to update the URL/title on view changes. Putting it in state.js means they all import one neutral shared utility instead of one module reaching into another or duplicating the URL-building logic.
+
+07-03/07-04-26 — extracted tcglibrary.js out of main.js, wrote its test suite
+
+- What moved: the entire TCG card library feature — showLibrary, showCardPanel, restoreLibraryState, renderCardGrid, the sort logic, the card detail modal, initTCGLibrary — all of it, into its own file.
+
+- Same DI pattern as before: initTCGLibrary({ enterLibrary, exitLibrary }), mirroring initFavorites/initTeam.
+
+- Wrote tcglibrary.test.js: 6 tests covering rendering a fetched batch, loading cards for a specific name, re-sorting on dropdown change, the tcg-button → auto-opens-card-panel flow, restoring library state from a popstate event, and isLibraryOpen().
+
+- Found a real bug while writing the restore test: restoreLibraryState wasn't awaiting its internal fetch — fixed 07-06, see below.
