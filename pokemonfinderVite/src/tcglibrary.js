@@ -175,7 +175,7 @@ export function getSortedCards() {
 
 //the function takes an array card objects and builds the DOM
 export function renderCardGrid(cards) {
-  cardGrid.innerHTML = ""; // fine — this string is a literal you wrote, not data
+  cardGrid.innerHTML = "";
 
   cards.forEach((card) => {
     const el = document.createElement("div");

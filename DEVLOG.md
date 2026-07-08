@@ -146,4 +146,29 @@ favorites.test.js — 5 tests
 
 - Wrote tcglibrary.test.js: 6 tests covering rendering a fetched batch, loading cards for a specific name, re-sorting on dropdown change, the tcg-button → auto-opens-card-panel flow, restoring library state from a popstate event, and isLibraryOpen().
 
-- Found a real bug while writing the restore test: restoreLibraryState wasn't awaiting its internal fetch — fixed 07-06, see below.
+07-08-26 — fixed innerHTML XSS in renderCardGrid()
+
+- what was wrong: renderCardGrid() in tcglibrary.js built each TCG card
+  with a template literal (card.name, card.set.name, card.rarity, the
+  image src) and assigned it straight to el.innerHTML. same shape of bug
+  as the showCardPanel fix from 07-01, different source — this data comes
+  from the TCG API fetch, not the URL, but "not user-typed" doesn't mean
+  trusted. anything crossing into the page from outside code i wrote is
+  untrusted for DOM-injection purposes, api included.
+
+- fix: rebuilt the card element with document.createElement for structure,
+  .textContent for the set name and rarity, and direct property assignment
+  (img.src, img.alt) for the image — none of those paths touch the HTML
+  parser, so there's no route left for a string to be interpreted as
+  markup, no matter what it contains.
+
+- mental model that made this click: innerHTML re-parses the string through
+  the browser's HTML parser (same one that runs on page load) — any <tag>
+  in it becomes a real, live element. textContent/createElement/property
+  assignment never invoke that parser at all, so the string is always just
+  data, never structure. that's the actual rule underneath every XSS fix,
+  not something to memorize per-case.
+
+- verified: ran the app, loaded cards with special characters in the name
+  (Farfetch'd, Flabébé) to confirm .textContent/.alt round-trip them
+  correctly with no escaping needed. full test suite still green.
