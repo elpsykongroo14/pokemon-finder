@@ -175,31 +175,38 @@ export function getSortedCards() {
 
 //the function takes an array card objects and builds the DOM
 export function renderCardGrid(cards) {
-  cardGrid.innerHTML = "";
+  cardGrid.innerHTML = ""; // fine — this string is a literal you wrote, not data
 
   cards.forEach((card) => {
     const el = document.createElement("div");
     el.className = "tcg-card";
 
-    const imgSrc = card.images?.small || "";
-    const setName = card.set?.name || "Unknown set";
-    const rarity = card.rarity || "Unknown";
+    const imgWrap = document.createElement("div");
+    imgWrap.className = "tcg-card-img-wrap";
 
-    el.innerHTML = `
-      <div class="tcg-card-img-wrap">
-        <img src="${imgSrc}" alt="${card.name}" loading="lazy" />
-      </div>
-      <div class="tcg-card-info">
-        <div class="tcg-card-set">${setName}</div>
-        <div class="tcg-card-rarity">${rarity}</div>
-      </div>
-    `;
+    const img = document.createElement("img");
+    img.src = card.images?.small || ""; // attribute set directly, not parsed
+    img.alt = card.name; // textContent-equivalent for attributes
+    img.loading = "lazy";
+    imgWrap.appendChild(img);
 
-    //clicking on a card opens the high-res image in a new tab.
-    el.addEventListener("click", () => {
-      openCardModal(card);
-    });
+    const info = document.createElement("div");
+    info.className = "tcg-card-info";
 
+    const setDiv = document.createElement("div");
+    setDiv.className = "tcg-card-set";
+    setDiv.textContent = card.set?.name || "Unknown set";
+
+    const rarityDiv = document.createElement("div");
+    rarityDiv.className = "tcg-card-rarity";
+    rarityDiv.textContent = card.rarity || "Unknown";
+
+    info.appendChild(setDiv);
+    info.appendChild(rarityDiv);
+    el.appendChild(imgWrap);
+    el.appendChild(info);
+
+    el.addEventListener("click", () => openCardModal(card));
     cardGrid.appendChild(el);
   });
 }
