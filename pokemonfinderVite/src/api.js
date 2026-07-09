@@ -11,12 +11,18 @@ const TCG_PROXY = "https://tcg-proxy.tcg-proxy.workers.dev";
 //key: the pokemon name or id
 //value: the full api response object
 const pokeCache = {};
+//caches species and evolution-chain responses by their own URL,
+//same reasoning as pokeCache: this data is static for the life of the session
+const speciesCache = {};
+const evoChainCache = {};
 
 //exported so test can reset cache state between runs - see api.test.js
 //(the app itself never needs to call this; pokemon data never changes
-//within a session, so the cache is menat to live for the app's whole life)
+//within a session, so the cache is meant to live for the app's whole life)
 export function clearPokeCache() {
   for (const key in pokeCache) delete pokeCache[key];
+  for (const key in speciesCache) delete speciesCache[key];
+  for (const key in evoChainCache) delete evoChainCache[key];
 }
 
 //----
@@ -48,15 +54,20 @@ export async function fetchPokemon(nameOrId) {
   return data;
 }
 
+//species
 export async function fetchSpecies(url) {
-  //species url comes from the pokemon object (pokemon.species.url)
-  //we just forward the URL rather than construct it
-  return getJSON(url);
+  if (speciesCache[url]) return speciesCache[url];
+  const data = await getJSON(url);
+  speciesCache[url] = data;
+  return data;
 }
 
+//evolution chain
 export async function fetchEvolutionChain(url) {
-  //same pattern - URL comes from species data
-  return getJSON(url);
+  if (evoChainCache[url]) return evoChainCache[url];
+  const data = await getJSON(url);
+  evoChainCache[url] = data;
+  return data;
 }
 
 export async function fetchAllpokemonNames() {
@@ -79,7 +90,7 @@ export async function fetchTCGCards(
   const safeName = pokemonName.replace(/"/g, "");
 
   //this is TCG's own query syntax (a lucene style field: "value search")
-  //it has its own grammar, seperate from the URL's grammar, so it gets built and sanitized as its own step before it ever touches a URL
+  //it has its own grammar, separate from the URL's grammar, so it gets built and sanitized as its own step before it ever touches a URL
   const searchExpr = `name:"${safeName}"`;
 
   //URLSearchParams owns all URL layer encoding from here down

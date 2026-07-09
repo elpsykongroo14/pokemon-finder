@@ -99,4 +99,21 @@ describe("team.js", () => {
     const team2 = storeModule.getTeam();
     expect(team2.length).toBe(0);
   });
+
+  it("clicking a filled slot's image calls the onSelectPokemon callback with that pokemon's name", async () => {
+    //Arrange
+    const storeModule = await import("./store.js");
+    storeModule.addToTeam(makePokemon("pikachu", 25));
+
+    const onSelectSpy = vi.fn();
+    team.initTeam(onSelectSpy);
+    team.renderTeam(); //builds the slot, attaches the image's click listener
+
+    //Act
+    document.querySelector("#team-slots .team-slot.filled img").click();
+
+    //Assert
+    expect(onSelectSpy).toHaveBeenCalledWith("pikachu");
+    expect(onSelectSpy).toHaveBeenCalledTimes(1);
+  });
 });
