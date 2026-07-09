@@ -172,3 +172,15 @@ favorites.test.js — 5 tests
 - verified: ran the app, loaded cards with special characters in the name
   (Farfetch'd, Flabébé) to confirm .textContent/.alt round-trip them
   correctly with no escaping needed. full test suite still green.
+
+07-09-26 Query string injection in fetchTCGCards
+
+Found and fixed an unencoded query string injection in fetchTCGCards (api.js), pokemoName came straight from the library search input and was interpolated directly into the request URL - no encoding, no escaping. a search term containing "&" could inject a second query param (e.g. "pikachu&pageSize=1" added a rogue pageSize); a term containg '"' could breakout of the name:"..." expression and inject into TCG's own search query syntax.
+
+Root cause: treated a template literal as "just a string" without accounting for the fact that a URL - and the query language nested inside its q= value - both have their own grammar that untrusted input can collide with. Same category of bug as the innerHTML XSS fix done earlier, different grammar.
+
+Fix: strip embedded quotes from the name before building the inner TCG query expression (no real Pokemon name containes one so nothing legitimate is lost), then build the URLSearchParams instead of manual concatenation, so every value is percent-encoded automatically. two layers, handled explicitly in order - inner query language first, then outer URL encoding.
+
+added a regression test (api.test.js) that asserts an injected "&pageSize=1" ends up percent-encoded inside the q value rather than appearing as a second top-level param. verified it actually catches the regression by reverting the fix locally and confirming the test fails against the old code.
+
+Takeaway: anytime i build a string that another system is going to parse - URL, shell command, SQL, file path - the same question applies: what does _that_ system treat as structural, and have i escaped it. this isnt a one off fix, its a pattern to check for everywhere.
