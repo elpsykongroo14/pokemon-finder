@@ -72,7 +72,27 @@ export async function fetchTCGCards(
   pokemonName,
   { orderBy = "-set.releaseDate", pageSize = 250 } = {},
 ) {
-  const url = `${TCG_PROXY}/?q=name:"${pokemonName}"&orderBy=${orderBy}&pageSize=${pageSize}`;
+  //strip embedded quotes before wrapping in our own "..." -
+  //no real Pokemon name contains a quote, so this loses nothing legitimate,
+  //and it closes off the one character that could break out of the
+  //name:"..." expression we're building below
+  const safeName = pokemonName.replace(/"/g, "");
+
+  //this is TCG's own query syntax (a lucene style field: "value search")
+  //it has its own grammar, seperate from the URL's grammar, so it gets built and sanitized as its own step before it ever touches a URL
+  const searchExpr = `name:"${safeName}"`;
+
+  //URLSearchParams owns all URL layer encoding from here down
+  //every value gets percent encoded automatically so a stray & or =
+  //inside searchExpr cant be reinterpreted as a new query param
+  const params = new URLSearchParams({
+    q: searchExpr,
+    orderBy,
+    pageSize,
+  });
+
+  const url = `${TCG_PROXY}/?${params}`;
+
   //TCG api wraps results in a 'data' array
   const data = await getJSON(url);
   return data.data || [];

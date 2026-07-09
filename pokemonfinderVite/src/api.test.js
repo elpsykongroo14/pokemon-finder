@@ -76,6 +76,14 @@ describe("fetchTCGCards", () => {
     const cards = await fetchTCGCards("pikachu");
     expect(cards).toEqual([]);
   });
+
+  it("percent-encodes special characters instead of injecting new params", async () => {
+    global.fetch.mockResolvedValue(fakeResponse(true, { data: [] }));
+    await fetchTCGCards("pikachu&pageSize=1");
+    const calledUrl = global.fetch.mock.calls[0][0];
+    expect(calledUrl).not.toContain('&pageSize=1"');
+    expect(calledUrl).toContain("pikachu%26pageSize%3D1");
+  });
 });
 
 describe("fetchTCGCardsBatch", () => {
