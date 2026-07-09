@@ -3,6 +3,7 @@ import {
   fetchPokemon,
   fetchSpecies,
   fetchTCGCards,
+  fetchEvolutionChain,
   fetchTCGCardsBatch,
   clearPokeCache,
 } from "./api.js";
@@ -60,6 +61,23 @@ describe("fetchSpecies", () => {
       {},
     );
   });
+
+  it("forwards the given url as-is", async () => {
+    global.fetch.mockResolvedValue(fakeResponse(true, { flavor: "text" }));
+    await fetchSpecies("https://pokeapi.co/api/v2/pokemon-species/25/");
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://pokeapi.co/api/v2/pokemon-species/25/",
+      {},
+    );
+  });
+
+  it("does not call fetch twice for the same url (cache hit)", async () => {
+    global.fetch.mockResolvedValue(fakeResponse(true, { flavor: "text" }));
+    const url = "https://pokeapi.co/api/v2/pokemon-species/25/";
+    await fetchSpecies(url);
+    await fetchSpecies(url);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("fetchTCGCards", () => {
@@ -101,6 +119,27 @@ describe("fetchTCGCardsBatch", () => {
       .mockResolvedValueOnce(fakeResponse(false, {}));
     const cards = await fetchTCGCardsBatch(["pikachu", "charmander"]);
     expect(cards).toEqual([{ id: "pika-1" }]);
+  });
+
+  describe("fetchEvolutionChain", () => {
+    it("forwards the given url as-is", async () => {
+      global.fetch.mockResolvedValue(fakeResponse(true, { chain: {} }));
+      await fetchEvolutionChain(
+        "https://pokeapi.co/api/v2/evolution-chain/10/",
+      );
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://pokeapi.co/api/v2/evolution-chain/10/",
+        {},
+      );
+    });
+
+    it("does not call fetch twice for the same url (cache hit)", async () => {
+      global.fetch.mockResolvedValue(fakeResponse(true, { chain: {} }));
+      const url = "https://pokeapi.co/api/v2/evolution-chain/10/";
+      await fetchEvolutionChain(url);
+      await fetchEvolutionChain(url);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
   });
 });
 
