@@ -184,3 +184,15 @@ Fix: strip embedded quotes from the name before building the inner TCG query exp
 added a regression test (api.test.js) that asserts an injected "&pageSize=1" ends up percent-encoded inside the q value rather than appearing as a second top-level param. verified it actually catches the regression by reverting the fix locally and confirming the test fails against the old code.
 
 Takeaway: anytime i build a string that another system is going to parse - URL, shell command, SQL, file path - the same question applies: what does _that_ system treat as structural, and have i escaped it. this isnt a one off fix, its a pattern to check for everywhere.
+
+07-10-26 -Cache pattern applied a second time, first CI pipelin
+
+extended the caching pattern from fetchPokemon to fetchSpecies and fetchEvolutionChain in api.js. these were being re-fetched on every single pokemon selection, including revisists to something already looked at in the same session - fetchPokemon had a cache, these two didnt, even though loadEvolutionData() in main.js calls both of them every time.
+
+went with two seperate cache objects (speciesCache, evoChainCache) rather than one shared cached, keyed by url instead of name/id since thats what these functions actually receive. folded the clearing logic for both into the existing clearPokeCache() export instead of adding two more exported resets - tests only care about "clean slate before this test," not about how many cache objects exist under the hood, so one reset function is the right granularity. paid off immediately: the existing beforeEach() in api.test.js already calls clearPokeCache(), so the new caches got reset for free with zero test-setup changes.
+
+wrote cache-hit tests for both (same shape as the fetchPokemon one: call twice with the same url, assert fetch was only called once), plus baseline tests for fetchEvolutionChain, which had zero coverage before today.
+
+also set up the first CI pipeline - .github/workflows/ci.yml, runs on push and PR against main: checkout, setup-node, npm ci, lint, test.
+biggest non-obvious piece: the repo root has a leftover package.json with no scripts (pre-Vite-migration relic), and the real app lives in pokemonfinderVite/ - so every setup needs
+defaults.run.working-directory: pokemonfinderVite, or CI runs against the wrong package.json entirely. also used npm ci instead of npm install the wrong package.json entirely. also used npm ci instead of npm install here specifically because ci fails loudly if the lockfile is out of sync instead of silently patching around it, which is what you want in an automated pipeline and dont necessarily want on our own machine.
