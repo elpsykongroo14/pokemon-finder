@@ -1,11 +1,15 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { getCurrentPokemon, setCurrentPokemon, pushState } from "./state.js";
 
 function makePokemon(name, id) {
   return { name, id };
 }
 describe("currentPokemon", () => {
-  it("starts as null before anything is set", () => {});
+  it("starts as null before anything is set", async () => {
+    vi.resetModules();
+    const freshStart = await import("./state.js");
+    expect(freshStart.getCurrentPokemon()).toBeNull();
+  });
 
   it("returns what was set", () => {
     setCurrentPokemon(makePokemon("pikachu", 25));
