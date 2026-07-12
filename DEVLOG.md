@@ -150,11 +150,7 @@ favorites.test.js — 5 tests
 
 - what was wrong: renderCardGrid() in tcglibrary.js built each TCG card
   with a template literal (card.name, card.set.name, card.rarity, the
-  image src) and assigned it straight to el.innerHTML. same shape of bug
-  as the showCardPanel fix from 07-01, different source — this data comes
-  from the TCG API fetch, not the URL, but "not user-typed" doesn't mean
-  trusted. anything crossing into the page from outside code i wrote is
-  untrusted for DOM-injection purposes, api included.
+  image src) and assigned it straight to el.innerHTML. same shape of bug as the showCardPanel fix from 07-01, different source — this data comes from the TCG API fetch, not the URL, but "not user-typed" doesn't mean trusted. anything crossing into the page from outside code i wrote is untrusted for DOM-injection purposes, api included.
 
 - fix: rebuilt the card element with document.createElement for structure,
   .textContent for the set name and rarity, and direct property assignment
