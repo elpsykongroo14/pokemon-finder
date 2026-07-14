@@ -2,18 +2,20 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 //main.js is the wiring/orchestration layer - it exports nothing except
 //initApp(). everything else it does (searching, toggling shiny sprites,
-//keyboard nav, restoring state from a URL) is only observable through the DOM, exactly like a real user would trigger it:
-//click a button, type into an input, dispatch a popstate event, then check what changed.
+//keyboard nav, restoring state from a URL) is only observable through the
+//DOM, exactly like a real user would trigger it: click a button, type into
+//an input, dispatch a popstate event, then check what changed.
 //
-//thats why this file looks different from api.test.js or state.test.js for example,
+//that's why this file looks different from state.test.js or api.test.js.
 //there we called an exported function and asserted on its return value.
-//here we simulate a user action and assert on the DOM/URL/localStorage afterwards. same discipline, different shape -
-//this is an integration test of the whole app, not a unit test of one function
+//here we simulate a user action and assert on the DOM/URL/localStorage
+//afterwards. same discipline, different shape - this is an integration
+//test of the whole app, not a unit test of one function.
 
-//this function mirrors index.html closely enough that every id main.js and its
-//dependencies (favorites.js, team.js, tcglibrary.js, comparemode.js) look up with
-//getElementById actually exists before we import the module.
-function buildDom() {
+//this mirrors index.html closely enough that every id main.js and its
+//dependencies (favorites.js, team.js, tcglibrary.js, comparemode.js) look
+//up with getElementById actually exists before we import the module.
+function buildDOM() {
   document.body.innerHTML = `
     <button id="favorites-toggle"></button>
     <button id="library-btn"></button>
@@ -22,17 +24,17 @@ function buildDom() {
       <button id="close-drawer"></button>
       <div id="favorites-container"></div>
     </div>
- 
+
     <div class="container">
       <input id="searchInput" />
       <button id="searchBtn"></button>
       <button id="randomBtn"></button>
- 
+
       <div class="suggestions">
         <button class="suggestion" data-name="charizard">Charizard</button>
         <button class="suggestion" data-name="mewtwo">Mewtwo</button>
       </div>
- 
+
       <div id="cards-wrapper">
         <div id="pokemonCard" class="hidden">
           <img id="pokemonImg" />
@@ -50,7 +52,7 @@ function buildDom() {
           <button id="team-btn"></button>
           <button id="tcg-btn"></button>
         </div>
- 
+
         <div id="compare-card" class="hidden">
           <img id="compareImg" />
           <h2 id="compareName"></h2>
@@ -60,17 +62,17 @@ function buildDom() {
           <div id="compare-type-effectiveness"></div>
         </div>
       </div>
- 
+
       <button id="compare-btn"></button>
       <div id="compare-hint" class="hidden"></div>
       <div id="search-history"></div>
       <div id="error" class="hidden"></div>
     </div>
- 
+
     <div id="team-strip">
       <div id="team-slots"></div>
     </div>
- 
+
     <div id="library-view" class="hidden">
       <button id="library-back"></button>
       <input id="library-search" />
@@ -120,19 +122,21 @@ function makePokemon(name, id, overrides = {}) {
   };
 }
 
-//most tests only care about the main pokemon payload but displayPokemon()
-//always kicks off loadEvolutionData() as a side effect (see main.js) - it fetches species data and an evoluyion chain for whatever is searched,
-//no matter what the test is actually checking. if a test's fetch mock doesnt cover those two extra endpoints,
-//loadEvolutionData's own try/catch swallows the resulting error
-//but it still logs to the console on every test run.
-//this helper builds a fetch mock that satisfues all three calls -
-//the pokemon itself, its species and a flat non branching evolution chain
-//so tests that arent specifically about evolution rendering stay quiet
+//most tests only care about the main pokemon payload, but displayPokemon()
+//always kicks off loadEvolutionData() as a side effect (see main.js) - it
+//fetches species data and an evolution chain for whatever was searched,
+//no matter what the test is actually checking. if a test's fetch mock
+//doesn't cover those two extra endpoints, loadEvolutionData's own
+//try/catch swallows the resulting error (that's correct, defensive
+//production behavior) but it still logs to the console on every test run.
+//this helper builds a fetch mock that satisfies all three calls - the
+//pokemon itself, its species, and a flat (non-branching) evolution chain -
+//so tests that aren't specifically about evolution rendering stay quiet.
 function mockFetchFor(...pokemons) {
   return vi.fn((url) => {
     for (const p of pokemons) {
-      //each pokemon gets its own species/evolution-chain url, keyed by id
-      //so this works wether the test searches for one pokemon or multiple
+      //each pokemon gets its own species/evolution-chain url, keyed by id,
+      //so this works whether the test searches for one pokemon or several
       if (url.includes(`/pokemon-species/${p.id}`)) {
         return Promise.resolve(
           fakeResponse(true, makeSpecies(`https://pokeapi.co/evo/${p.id}/`)),
@@ -141,9 +145,10 @@ function mockFetchFor(...pokemons) {
       if (url.includes(`/evo/${p.id}`)) {
         return Promise.resolve(fakeResponse(true, flatChain(p.name)));
       }
-      //a search can be by name (typed in the box) or by id (getRandomPokemon puts a raw number in the search box) - match either
+      //a search can be by name (typed in the box) or by id (getRandomPokemon
+      //puts a raw number in the search box) - match either
       if (
-        url.endsWith(`/pokemon/${(p, name)}`) ||
+        url.endsWith(`/pokemon/${p.name}`) ||
         url.endsWith(`/pokemon/${p.id}`)
       ) {
         return Promise.resolve(fakeResponse(true, p));
@@ -162,7 +167,7 @@ function makeSpecies(evoUrl) {
   };
 }
 
-// a non evolving chain: just the root, no evolves_to
+//a non-evolving chain: just the root, no evolves_to
 function flatChain(name) {
   return { chain: { species: { name }, evolves_to: [] } };
 }
@@ -202,16 +207,16 @@ describe("main.js", () => {
   //after its fetch mock and URL are ready - import becomes the last
   //setup step, not the first one.
   beforeEach(() => {
-    buildDom();
+    buildDOM();
     localStorage.clear();
     window.history.replaceState(null, "", "/");
     vi.resetModules();
   });
 
-  //importing main.js ruins initApp() as a side effect so
-  //booting the app in a test just means importing it fresh,
-  //we never call initApp() ourselves: doing that would regiester every event
-  //listener a second time on top of the ones import-time already added
+  //importing main.js runs initApp() as a side effect (see above) - so
+  //"booting the app" in a test just means importing it fresh. we never
+  //call initApp() ourselves; doing that would register every event
+  //listener a second time on top of the ones import-time already added.
   async function bootApp() {
     await import("./main.js");
   }
@@ -263,6 +268,7 @@ describe("main.js", () => {
 
     it("does nothing if clicked before any pokemon has been searched", async () => {
       await bootApp();
+
       document.getElementById("shiny-btn").click();
 
       expect(
@@ -280,7 +286,7 @@ describe("main.js", () => {
       global.fetch = mockFetchFor(makePokemon("deoxys", 513));
       await bootApp();
 
-      document.getElementById("randomBtn".click());
+      document.getElementById("randomBtn").click();
 
       expect(document.getElementById("searchInput").value).toBe("513");
       await vi.waitFor(() =>
@@ -297,7 +303,7 @@ describe("main.js", () => {
       await bootApp();
 
       document.getElementById("searchInput").value = "bulbasaur";
-      document.getElementById("search-btn").click();
+      document.getElementById("searchBtn").click();
 
       await vi.waitFor(() =>
         expect(document.getElementById("pokemonName").textContent).toBe(
@@ -311,10 +317,10 @@ describe("main.js", () => {
       expect(JSON.parse(localStorage.getItem("pokemon_history"))).toEqual([
         "bulbasaur",
       ]);
-      expect(window.location.search).toBe("?pokemon = bulbasaur");
+      expect(window.location.search).toBe("?pokemon=bulbasaur");
     });
 
-    it("shows a not found message on a 404 and keeps the card hidden", async () => {
+    it("shows a not-found message on a 404 and keeps the card hidden", async () => {
       global.fetch = vi.fn(() => Promise.resolve(fakeResponse(false, {})));
       await bootApp();
 
@@ -335,10 +341,10 @@ describe("main.js", () => {
       ).toBe(true);
     });
 
-    it("shows a network error message when fetch itself throws", async () => {
+    it("shows a network-error message when fetch itself throws", async () => {
       //fetch() rejecting with a TypeError is exactly what happens in a
-      //real browser on a dropped connection or DNS failure -
-      //rhis is the same distinction api.js's getJSON() relies on
+      //real browser on a dropped connection or DNS failure - this is the
+      //same distinction api.js's getJSON() relies on
       global.fetch = vi.fn(() =>
         Promise.reject(new TypeError("Failed to fetch")),
       );
@@ -366,7 +372,7 @@ describe("main.js", () => {
   });
 
   describe("evolution chain rendering", () => {
-    it("shows the no-evolution message for a pokemon with no evoles_to", async () => {
+    it("shows the no-evolution message for a pokemon with no evolves_to", async () => {
       const pokemon = makePokemon("tauros", 128);
       global.fetch = vi.fn((url) => {
         if (url.includes("/pokemon/tauros")) {
@@ -402,7 +408,7 @@ describe("main.js", () => {
             fakeResponse(true, makeSpecies("https://pokeapi.co/evo/2/")),
           );
         }
-        if (url.includes("/evo/")) {
+        if (url.includes("/evo/2")) {
           return Promise.resolve(
             fakeResponse(
               true,
@@ -410,8 +416,8 @@ describe("main.js", () => {
             ),
           );
         }
-        //buildStageElement calls fetchPokemon(name) for every node in the tree,
-        //including the branches - each needs its own sprite lookup
+        //buildStageElement calls fetchPokemon(name) for every node in the
+        //tree, including the branches - each needs its own sprite lookup
         const requested = url.split("/pokemon/")[1];
         return Promise.resolve(fakeResponse(true, makePokemon(requested, 134)));
       });
@@ -450,7 +456,7 @@ describe("main.js", () => {
       expect(document.activeElement).toBe(chips[1]);
     });
 
-    it("wraps from the last chip back tot the first on ArrowRught", async () => {
+    it("wraps from the last chip back to the first on ArrowRight", async () => {
       await bootApp();
 
       const chips = document.querySelectorAll(".suggestions .suggestion");
@@ -471,7 +477,7 @@ describe("main.js", () => {
       await bootApp();
 
       await vi.waitFor(() =>
-        expect(document.getElementById("pokemoName").textContent).toBe(
+        expect(document.getElementById("pokemonName").textContent).toBe(
           "snorlax",
         ),
       );
@@ -485,7 +491,6 @@ describe("main.js", () => {
 
       document.getElementById("searchInput").value = "gengar";
       document.getElementById("searchBtn").click();
-
       await vi.waitFor(() =>
         expect(
           document.getElementById("pokemonCard").classList.contains("hidden"),
@@ -497,7 +502,7 @@ describe("main.js", () => {
       expect(
         document.getElementById("pokemonCard").classList.contains("hidden"),
       ).toBe(true);
-      expect(document.title).toBe("Pokémon finder");
+      expect(document.title).toBe("Pokémon Finder");
     });
 
     it("re-runs the search when popstate fires with a pokemon state", async () => {
