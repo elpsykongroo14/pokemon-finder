@@ -8,6 +8,7 @@ import {
 } from "./store.js";
 
 import { getCurrentPokemon } from "./state.js";
+import { escapeHTML } from "./sanitize.js";
 
 const teamBtn = document.getElementById("team-btn");
 const teamSlots = document.getElementById("team-slots");
@@ -59,7 +60,7 @@ export function renderTeam() {
     if (team[i]) {
       slot.classList.add("filled");
       slot.innerHTML = `
-            <img src="${team[i].sprite}" alt="${team[i].name}" />
+            <img src="${escapeHTML(team[i].sprite)}" alt="${escapeHTML(team[i].name)}" />
             <button class="remove-team">X</button>
             `;
 

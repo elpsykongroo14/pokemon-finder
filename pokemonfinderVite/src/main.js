@@ -14,6 +14,7 @@ import {
 } from "./tcglibrary.js";
 
 import { getSpriteUrl } from "./sprites.js";
+import { escapeHTML } from "./sanitize.js";
 
 import {
   renderSprite,
@@ -259,8 +260,8 @@ async function buildStageElement(name) {
   const stage = document.createElement("div");
   stage.className = "evolution-stage";
   stage.innerHTML = `
-     <img src="${sprite}" alt="${name}" />
-     <span>${name}</span>
+     <img src="${escapeHTML(sprite)}" alt="${escapeHTML(name)}" />
+     <span>${escapeHTML(name)}</span>
   `;
 
   stage.addEventListener("click", () => {
