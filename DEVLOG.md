@@ -223,3 +223,21 @@ found a real bug in my own test setup, not the app: main.js's initApp() auto-run
 also deduplicated every test's fetch mock into one mockFetchFor(...pokemons) helper, keyed by id for species/evolution-chain urls and by id-or-name for the pokemon lookup itself (getRandomPokemon searches by raw numeric id, everything else searches by name) - without it, every happy-path test needed to hand-roll a species+evolution-chain response just to keep loadEvolutionData's internal try/catch from logging a caught error to stderr on every run.
 
 10 test files, 83 tests total, lint clean. every module in src/ now has a matching test file - the gap CI exposed back on 07-12 is closed.
+
+07-15-26 -CD pipeline: auto-deploy to Cloudflare on merge
+
+added .github/workflows/cd.yml, triggered off workflow_run watching CI rather than its own push trigger - deploy only fires if CI on main actually passed, and checks out github.event.workflow_run.head_sha specifically so it's deploying the exact commit that got tested, not whatever main happens to be by the time the job starts (those two can drift if another push lands in the gap).
+
+two jobs, both gated on the same if: github.event.workflow_run.conclusion == 'success' check: deploy-frontend builds pokemonfinderVite (npm ci, npm run build) and ships dist/ to Cloudflare Pages via wrangler-action; deploy-worker deploys tcg-proxy separately since it's its own wrangler project, not part of the vite build output. first real run (CD #1) came back clean off today's earlier devlog-update merge.
+
+-XSS hardening: sanitize.js + escapeHTML everywhere, plus a repo cleanup
+
+three PRs today, each building on the last:
+
+1. chore: removed the stale root-level package.json and package-lock.json - the pre-Vite-migration relic that CI's working-directory setting on 07-10 had already worked around, now actually deleted instead of just noted as dead weight.
+
+2. added sanitize.js - one function, escapeHTML(str), maps &, <, >, ", ' to their entities and returns "" for null/undefined so a missing name never ends up as the literal string "undefined" in the DOM. wrote sanitize.test.js alongside it: plain text passes through untouched, a <script> tag gets neutralized, an <img onerror=...> payload gets neutralized, ampersands/quotes get escaped correctly, null/undefined both come back as "".
+
+3. wired escapeHTML into every remaining innerHTML template literal that interpolates pokemon-derived strings - render.js (types, abilities, hidden ability, type-effectiveness chips), main.js's evolution-stage builder, favorites.js's card, team.js's slot, and tcglibrary.js's card-modal meta rows. same underlying issue as the card-element XSS fix from earlier this month - anywhere a name/sprite/ability string lands inside a template literal that becomes innerHTML, it's a parse-as-markup risk, not just a display string. this closes out the last handful of spots still doing raw interpolation instead of the createElement/textContent pattern.
+
+mental model worth writing down since it kept coming up today: pokemon names/abilities/types come from the pokeAPI so they're not attacker-controlled right now, but the rule that actually holds up is "any string that ends up inside a template literal assigned to .innerHTML gets escaped, full stop" - not "escape it if I can think of how it'd be exploited." the second version is exactly how these gaps get left behind in the first place.
