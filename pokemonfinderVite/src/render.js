@@ -4,6 +4,7 @@
 //caller always says exactly where the result goes. thats what lets both main.js's own card and comparemode.js's card reuse the exact same rendering logic
 
 import { getSpriteUrl } from "./sprites.js";
+import { escapeHTML } from "./sanitize.js";
 
 //main.js's card and compareMode's card both render stats in this order
 //which is the only reason index-based comparison between the two cards (in compareMode.js) is safe to do
@@ -157,10 +158,10 @@ export function renderSprite(pokemon, target) {
 
 export function renderTypes(pokemon, target) {
   target.innerHTML = pokemon.types
-    .map(
-      (t) =>
-        `<span class="type" style="background-color:${typeColors[t.type.name] || "#777"}">${t.type.name}</span>`,
-    )
+    .map((t) => {
+      const name = escapeHTML(t.type.name);
+      return `<span class="type" style="background-color:${typeColors[t.type.name] || "#777"}">${name}</span>`;
+    })
     .join("");
 }
 
@@ -191,14 +192,14 @@ export function renderMeta(pokemon, target) {
       </tr>
       <tr>
         <td class="meta-key">Abilities</td>
-        <td class="meta-val">${normalAbilities}</td>
+        <td class="meta-val">${escapeHTML(normalAbilities)}</td>
       </tr>
       ${
         hiddenAbility
           ? `
       <tr>
         <td class="meta-key">Hidden</td>
-        <td class="meta-val hidden-ability">${hiddenAbility.ability.name}</td>
+        <td class="meta-val hidden-ability">${escapeHTML(hiddenAbility.ability.name)}</td>
       </tr>`
           : ""
       }
@@ -262,7 +263,7 @@ export function renderTypeEffectiveness(pokemon, target) {
       const chips = types
         .map(
           (t) =>
-            `<span class="type" style="background-color:${typeColors[t] || "#777"}">${t}</span>`,
+            `<span class="type" style="background-color:${typeColors[t] || "#777"}">${escapeHTML(t)}</span>`,
         )
         .join("");
       return `

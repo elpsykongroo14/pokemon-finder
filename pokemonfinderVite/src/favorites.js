@@ -7,6 +7,7 @@ import {
   isFavorite,
 } from "./store.js";
 import { getCurrentPokemon } from "./state.js";
+import { escapeHTML } from "./sanitize.js";
 
 const favoritesToggle = document.getElementById("favorites-toggle");
 const favoritesDrawer = document.getElementById("favorites-drawer");
@@ -43,13 +44,15 @@ export function renderFavorites() {
   favorites.forEach((pokemon) => {
     const card = document.createElement("div");
     card.className = "favorite-card";
+    const name = escapeHTML(pokemon.name);
+    const sprite = escapeHTML(pokemon.sprite);
     card.innerHTML = `
-      <img src="${pokemon.sprite}" alt="${pokemon.name}" />
+      <img src="${sprite}" alt="${name}" />
       <div class="favorite-card-info">
-        <div class="favorite-card-name">${pokemon.name}</div>
+        <div class="favorite-card-name">${name}</div>
         <div class="favorite-card-id">#${String(pokemon.id).padStart(3, "0")}</div>
       </div>
-      <button class="remove-favorite" data-name="${pokemon.name}">x</button>
+      <button class="remove-favorite" data-name="${name}">x</button>
     `;
 
     card.addEventListener("click", (e) => {
