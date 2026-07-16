@@ -173,10 +173,17 @@ function highlightStats() {
     if (p2StatEl)
       p2StatEl.className = `stat-value ${!p1Wins ? "stat-win" : "stat-lose"}`;
 
-    p1Bar.classList.toggle("win", p1Wins);
-    p1Bar.classList.toggle("lose", !p1Wins);
-    p2Bar.classList.toggle("win", !p1Wins);
-    p2Bar.classList.toggle("lose", p1Wins);
+    //same guard as the "stats are equal" branch above -
+    //p1bar/p2bar come from  an index lookup that assumes the DOM always had exactly mainstats.length bars in the same order as mainStats itself.
+    //thats true today but nothing enforces it, so we dont trust it blindly here
+    if (p1Bar) {
+      p1Bar.classList.toggle("win", p1Wins);
+      p2Bar.classList.toggle("lose", !p1Wins);
+    }
+    if (p2Bar) {
+      p2Bar.classList.toggle("win", !p1Wins);
+      p2Bar.classList.toggle("lose", p1Wins);
+    }
   });
 }
 
