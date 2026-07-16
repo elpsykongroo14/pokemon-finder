@@ -301,4 +301,44 @@ describe("comparemode.js", () => {
     expect(mainValues[3].className).toBe("stat-value stat-lose");
     expect(compareValues[3].className).toBe("stat-value stat-win");
   });
+
+  it("does not throw when the compare card has fewer stat bars than mainStats (defensive guard regression test)", () => {
+    //Arrange: main card renders normally (all 6 stat bars exist)
+    const bulbasaur = makePokemon("bulbasaur", 1, { hp: 45, speed: 45 });
+    const charmander = makePokemon("charmander", 4, { hp: 39, speed: 65 });
+
+    render.renderStats(bulbasaur, document.getElementById("pokemonStats"));
+    state.setCurrentPokemon(bulbasaur);
+
+    //but the compare card's renderStats only renders the first 5 stats -
+    //simulating the exact situation highlighStats() has to survive:
+    //an index (5, "special-defense") has no matching DOM element
+    compareMode.initCompareMode({
+      onExitCompare: vi.fn(),
+      renderSprite: render.renderSprite,
+      renderTypes: (pokemon, target) => {
+        target.innerHTML = `<span>${pokemon.name}</span>`;
+      },
+      renderStats: (pokemon, target) => {
+        render.renderStats(pokemon, target);
+        //drop the last stat bar to simulate a mismatch with mainStats
+        const bars = target.querySelectorAll(".stat");
+        bars[bars.length - 1].remove();
+      },
+      renderTypeEffectiveness: vi.fn(),
+    });
+
+    //Act + Assert: this must not throw, even though comparePokemon's compareStats is missing the
+    //6th bar that highlightStats expects at mainStats index 5
+    expect(() => {
+      compareMode.displayComparedPokemon(charmander);
+    }).not.toThrow();
+
+    //the stats that do have matching bars on both side still highlight normally -
+    //the missing one just gets silently skipped, not crashed past
+    const mainValues = document
+      .getElementById("pokemonStats")
+      .querySelectorAll(".stat-value");
+    expect(mainValues[0].className).toBe("stat-value stat-win"); //hp still highlights
+  });
 });
