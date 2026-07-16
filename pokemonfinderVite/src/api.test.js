@@ -5,6 +5,7 @@ import {
   fetchTCGCards,
   fetchEvolutionChain,
   fetchTCGCardsBatch,
+  fetchAllpokemonNames,
   clearPokeCache,
 } from "./api.js";
 
@@ -140,6 +141,30 @@ describe("fetchTCGCardsBatch", () => {
       await fetchEvolutionChain(url);
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("fetchAllpokemonNames", () => {
+  it("returns just the names from the api's {results} shape", async () => {
+    global.fetch.mockResolvedValue(
+      fakeResponse(true, {
+        results: [
+          { name: "bulbasaur", url: "..." },
+          { name: "ivysaur", url: "..." },
+        ],
+      }),
+    );
+    const names = await fetchAllpokemonNames();
+    expect(names).toEqual(["bulbasaur", "ivysaur"]);
+  });
+
+  it("does not call fetch twice across calls (cache hit)", async () => {
+    global.fetch.mockResolvedValue(
+      fakeResponse(true, { results: [{ name: "bulbasaur", url: "..." }] }),
+    );
+    await fetchAllpokemonNames();
+    await fetchAllpokemonNames();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });
 

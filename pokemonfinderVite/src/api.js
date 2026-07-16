@@ -23,6 +23,7 @@ export function clearPokeCache() {
   for (const key in pokeCache) delete pokeCache[key];
   for (const key in speciesCache) delete speciesCache[key];
   for (const key in evoChainCache) delete evoChainCache[key];
+  allNamesCache = null;
 }
 
 //----
@@ -70,11 +71,18 @@ export async function fetchEvolutionChain(url) {
   return data;
 }
 
+//theres only ever one possible result here (theres no "which pokemon" argument to key bey)
+//so unliike pokeCache/speciesCache/evoChainCache this doesnt need to be an object
+//a single variable that starts out empty and gets filled in once is enough
+let allNamesCache = null;
+
 export async function fetchAllpokemonNames() {
+  if (allNamesCache) return allNamesCache;
   const data = await getJSON(`${POKE_API}/pokemon?limit=1025`);
   //the api returns {results: [{name, url}, ...]}
   //we only need the names
-  return data.results.map((p) => p.name);
+  allNamesCache = data.results.map((p) => p.name);
+  return allNamesCache;
 }
 
 //-------TCG
