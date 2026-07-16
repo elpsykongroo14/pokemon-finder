@@ -5,7 +5,7 @@
 export default {
   async fetch(request, env) {
     //---CORS preflight
-    //before making a "real" request, brosers send a preflight otpions request to ask:
+    //before making a "real" request, browsers send a preflight otpions request to ask:
     //"is this cross-origin request allowed?"
     //we have to answer yes, or the browser wont proceed
     if (request.method === "OPTIONS") {
@@ -47,7 +47,7 @@ export default {
 
 //---CORS headers helper
 //this tells the browser: "yes any origin may read this response"
-//in production, would be replace * with an actual domain
+//I hid the key, but I know the CORS wildcard means the proxy itself is technically open to abuse
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
