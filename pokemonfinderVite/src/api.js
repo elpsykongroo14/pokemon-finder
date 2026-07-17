@@ -2,9 +2,15 @@
 //functions return data or throw - they never touch DOM
 
 //base URLs
+//POKE_API is a public, shared API - same url for every developer
+//so its fine as a hardcoded constant.
+//TCG_PROXY is our specified deployed cloudflare worker though -
+//a fork of this repo needs to point at their own worker, not ours
+//that makes enviroment config, not a universal constant env var insted.
+//see .env.example for what to set locally
 const POKE_API = "https://pokeapi.co/api/v2";
-
-const TCG_PROXY = "https://tcg-proxy.tcg-proxy.workers.dev";
+ 
+const TCG_PROXY = import.meta.env.VITE_TCG_PROXY;
 
 //simple in memory cache
 //a plain object used as a key value store
@@ -44,12 +50,12 @@ async function getJSON(url, options = {}) {
 //Pokemon
 export async function fetchPokemon(nameOrId) {
   const key = String(nameOrId).toLowerCase().trim();
-
+ 
   //return cached result if we have it
   if (pokeCache[key]) return pokeCache[key];
-
+ 
   const data = await getJSON(`${POKE_API}/pokemon/${key}`);
-
+ 
   //Store in cache before returning
   pokeCache[key] = data;
   return data;
@@ -75,9 +81,10 @@ export async function fetchEvolutionChain(url) {
 //so unliike pokeCache/speciesCache/evoChainCache this doesnt need to be an object
 //a single variable that starts out empty and gets filled in once is enough
 let allNamesCache = null;
-
+ 
 export async function fetchAllpokemonNames() {
   if (allNamesCache) return allNamesCache;
+ 
   const data = await getJSON(`${POKE_API}/pokemon?limit=1025`);
   //the api returns {results: [{name, url}, ...]}
   //we only need the names
@@ -91,6 +98,17 @@ export async function fetchTCGCards(
   pokemonName,
   { orderBy = "-set.releaseDate", pageSize = 250 } = {},
 ) {
+  //fail loud and specific here, right  where the assumption is used -
+  //without this, a missing env var silently becomes the literal string
+  //"undefined" in the url below, and getJSON's error just says "HTTP 404" for undefined/?q=...",
+  //which sends a future debugger looking at the network layer instead of the actual cause
+  if (!TCG_PROXY) {
+    throw new Error(
+      "VITE_TCG_PROXY is not set. Copy .env.example to .env locally, " +
+        "or set the VITE_TCG_PROXY repository secret in CI/CD.",
+    );
+  }
+
   //strip embedded quotes before wrapping in our own "..." -
   //no real Pokemon name contains a quote, so this loses nothing legitimate,
   //and it closes off the one character that could break out of the
@@ -109,9 +127,9 @@ export async function fetchTCGCards(
     orderBy,
     pageSize,
   });
-
+ 
   const url = `${TCG_PROXY}/?${params}`;
-
+ 
   //TCG api wraps results in a 'data' array
   const data = await getJSON(url);
   return data.data || [];

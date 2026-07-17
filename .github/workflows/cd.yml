@@ -30,6 +30,10 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          #Vite_TCG_PROXY gets baked into the built js at this step
+          #(vite substitutes it at build time, not runtime - it has to be set as a repo secret)
+          VITE_TCG_PROXY: ${{secrets.VITE_TCG_PROXY}}
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
