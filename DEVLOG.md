@@ -252,3 +252,14 @@ second bug: highlightStats() in comparemode.js guarded p1Bar/p2Bar with if (p1Ba
 then audited for the same two bug shapes elsewhere instead of assuming they were isolated: grepped every querySelectorAll(...)[index] use (only existed in the block just fixed) and every .find() call (four other spots, all correctly guarded already). good sign - the p1Bar/p2Bar gap was a one-off inconsistency between two branches written close together, not a hole in understanding .find()/undefined handling.
 
 mental model worth keeping: a defensive check is a claim about the world ("this might be missing"). if that claim is true in one branch of a function it's true in every branch, because the data doesn't get safer three lines down. the fix for this class of bug isn't "remember to guard more" - it's a second pass over a finished function specifically checking that every branch treats the same variable the same way.
+
+07-17-26 -env config for TCG_PROXY
+
+pulled TCG_PROXY out of api.js and into a vite env var
+(import.meta.env.VITE_TCG_PROXY). it was hardcoded before, which meant anyone forking the repo had to edit source code to point at their own worker instead of setting one value. POKE_API stays hardcoded on purpose - it's a public, shared API, same url for every developer, so there's nothing to configure. TCG_PROXY is different: it's my specific deployed worker, so it's environment config, not a universal constant.
+
+three env files: .env (real local value, gitignored - already covered by the existing root .gitignore's bare ".env" line, confirmed with git check-ignore -v rather than assuming), .env.example (committed template for forks), .env.test (committed, fake value, so tests never depend on a real .env existing - a fresh clone or CI should get the same passing test suite with zero setup).
+
+added a fail-loud guard in fetchTCGCards: if VITE_TCG_PROXY isn't set, it throws a clear, actionable error instead of silently building a "undefined/?..." url and failing three layers away from the real cause - same "fail loud where the bad assumption is made" principle as the p1Bar/p2Bar fix. wrote a test for it too, which took some real work: since TCG_PROXY is captured once into a module-level const at import time, stubbing the env after api.js is already loaded doesn't retroactively change it. used vi.stubEnv() + vi.resetModules() + a dynamic import() to get a genuinely fresh module evaluation under the stubbed value.
+
+realized this value getting baked in at build time isn't just a local-dev concern - cd.yml's Build step runs npm run build fresh in CI on every deploy, with no env block at all, so it would've shipped "undefined" to production silently (bundling succeeds either way, it's valid JS - CI wouldn't catch it, and neither would the current CI, since it only lints + tests, never builds). added VITE_TCG_PROXY as a repo secret and wired it into the Build step's env.
