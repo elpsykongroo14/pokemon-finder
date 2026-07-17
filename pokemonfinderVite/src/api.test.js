@@ -103,6 +103,23 @@ describe("fetchTCGCards", () => {
     expect(calledUrl).not.toContain('&pageSize=1"');
     expect(calledUrl).toContain("pikachu%26pageSize%3D1");
   });
+
+  it("throws a clear, actionable error when VITE_TCG_PROXY is not configured", async () => {
+    //TCG_PROXY is captured once at module import time into a module-level const -
+    //stubbing the env after api.js is already loaded wouldnt do anything,
+    //since nothing re-reads import.meta.env after that first read.
+    //vi.resetModules() + a dynamic import gives us a *fresh* evaluation of api.js
+    //one that picks up the stubbed (empty) env value from scratch.
+    vi.stubEnv("VITE_TCG_PROXY", "");
+    vi.resetModules();
+    const freshApi = await import("./api.js");
+
+    await expect(freshApi.fetchTCGCards("pikachu")).rejects.toThrow(
+      /VITE_TCG_PROXY is not set/,
+    );
+
+    vi.unstubAllEnvs(); //dont leak this stub into later tests
+  });
 });
 
 describe("fetchTCGCardsBatch", () => {
