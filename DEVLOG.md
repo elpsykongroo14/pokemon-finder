@@ -263,3 +263,25 @@ three env files: .env (real local value, gitignored - already covered by the exi
 added a fail-loud guard in fetchTCGCards: if VITE_TCG_PROXY isn't set, it throws a clear, actionable error instead of silently building a "undefined/?..." url and failing three layers away from the real cause - same "fail loud where the bad assumption is made" principle as the p1Bar/p2Bar fix. wrote a test for it too, which took some real work: since TCG_PROXY is captured once into a module-level const at import time, stubbing the env after api.js is already loaded doesn't retroactively change it. used vi.stubEnv() + vi.resetModules() + a dynamic import() to get a genuinely fresh module evaluation under the stubbed value.
 
 realized this value getting baked in at build time isn't just a local-dev concern - cd.yml's Build step runs npm run build fresh in CI on every deploy, with no env block at all, so it would've shipped "undefined" to production silently (bundling succeeds either way, it's valid JS - CI wouldn't catch it, and neither would the current CI, since it only lints + tests, never builds). added VITE_TCG_PROXY as a repo secret and wired it into the Build step's env.
+
+07-18-26:
+added rate limiting to the Cloudflare Worker. tried the "no code" route first through Cloudflare's dashboard Rate Limiting Rules, but hit a wall — those rules are zone-level, meaning they only attach to a domain you actually own in your Cloudflare account. my Worker's living on the shared workers.dev subdomain with no zone attached, so the dashboard had nothing to offer a rule against. good reminder that a feature not showing up in a dashboard is often a scope mismatch, not a bug.
+
+went with Cloudflare's Rate Limiting binding instead — still no custom counter logic to write and maintain myself, just declared in wrangler.jsonc:
+
+"unsafe": {
+"bindings": [
+{
+"name": "TCG_RATE_LIMITER",
+"type": "ratelimit",
+"namespace_id": "1001",
+"simple": { "limit": 100, "period": 60 }
+}
+]
+}
+
+100 requests / 60 seconds per IP, worked out from estimating what a real user clicking around actually generates in a minute (~20-30 requests across searches, card panels, compare mode) and giving 3-5x headroom above that.
+
+in the fetch handler, pull the client IP off CF-Connecting-IP — set by Cloudflare's edge itself after the request already reached them, so unlike X-Forwarded-For it can't be spoofed by the client — and check it against the binding before doing anything expensive: before parsing query params, before touching the TCG API key. sits right after the CORS preflight block, before the method check, so a flood gets rejected as cheaply as possible.
+
+also noticed: the rate limiter runs regardless of whether Origin is valid, which at first looked like it broke my own "each guard only spends the resource it protects" rule. but a raw curl loop won't send an Origin header at all. no browser, no CORS layer to skip. if the limiter only counted CORS-passing requests, a scripted flood would walk past it uncounted, which defeats the whole point.
