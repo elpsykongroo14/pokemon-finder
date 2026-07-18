@@ -43,6 +43,15 @@ export default {
       });
     }
 
+    const clientIP = request.headers.get("CF-Connecting-IP");
+    const { success } = await env.TCG_RATE_LIMITER.limit({ key: clientIP });
+
+    if (!success) {
+      return new Response("Too many requests", {
+        status: 429,
+        headers: corsHeaders,
+      });
+    }
     //---only allow GET requests
     //corsHeaders is included here too, not just on the success response below -
     //otherwise a disallowed-method request from an ALLOWED origin would get a
