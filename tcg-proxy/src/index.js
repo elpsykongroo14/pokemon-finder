@@ -68,6 +68,24 @@ export default {
     //the browser sends requests to our worker url with TCG api as a query parameter
     //we extract everything after the worker's origin and forward it to the real tcg api
     const incomingURL = new URL(request.url);
+
+    //---check the server-side cache first
+    //the key is the exact query string, prefixed so this KV namespace
+    //stays safe to reuse for other kinds of cached data later
+    const cacheKey = `tcg:${incomingURL.search}`;
+    const cached = await env.TCG_CACHE.get(cacheKey, { type: "json" });
+
+    if (cached) {
+      return new Response(JSON.stringify(cached), {
+        status: 200,
+        headers: {
+          "Content-type": "application/json",
+          "X-Cache": "HIT",
+          ...corsHeaders,
+        },
+      });
+    }
+    //---build the TCG API URL
     const tcgURL = `https://api.pokemontcg.io/v2/cards${incomingURL.search}`;
 
     //---forward request to TCG api with the secret key
@@ -81,10 +99,17 @@ export default {
     //---forward the response back to the browser
     const data = await tcgResponse.json();
 
+    if (tcgResponse.ok) {
+      await env.TCG_CACHE.put(cacheKey, JSON.stringify(data), {
+        expirationTtl: 60 * 60 * 24, //24 hours, in seconds
+      });
+    }
+
     return new Response(JSON.stringify(data), {
       status: tcgResponse.status,
       headers: {
         "Content-Type": "application/json",
+        "X-Cache": "MISS",
         //corsHeaders is already the object we want - it was built once,
         //above, by CALLING buildCorsHeaders(). from here on it's just data
         //to spread in, not a function to call again.

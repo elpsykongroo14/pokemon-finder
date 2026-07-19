@@ -3,6 +3,15 @@
   "main": "src/index.js",
   "compatibility_date": "2026-07-17",
 
+  //KV
+
+  "kv_namespaces": [
+    {
+      "binding": "TCG_CACHE",
+      "id": "76601004ae52446d805b797ff5c63a95",
+    },
+  ],
+
   //rate limite block:
   "unsafe": {
     "bindings": [
