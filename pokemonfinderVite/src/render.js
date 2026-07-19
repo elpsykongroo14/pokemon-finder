@@ -4,7 +4,6 @@
 //caller always says exactly where the result goes. thats what lets both main.js's own card and comparemode.js's card reuse the exact same rendering logic
 
 import { getSpriteUrl } from "./sprites.js";
-import { escapeHTML } from "./sanitize.js";
 
 //main.js's card and compareMode's card both render stats in this order
 //which is the only reason index-based comparison between the two cards (in compareMode.js) is safe to do
@@ -157,12 +156,37 @@ export function renderSprite(pokemon, target) {
 }
 
 export function renderTypes(pokemon, target) {
-  target.innerHTML = pokemon.types
-    .map((t) => {
-      const name = escapeHTML(t.type.name);
-      return `<span class="type" style="background-color:${typeColors[t.type.name] || "#777"}">${name}</span>`;
-    })
-    .join("");
+  target.textContent = ""; //clear whatever was rendered last time
+
+  const fragment = document.createDocumentFragment();
+
+  pokemon.types.forEach((t) => {
+    const typeName = t.type.name;
+    const chip = document.createElement("span");
+    chip.className = "type";
+    chip.style.backgroundColor = typeColors[typeName] || "#777";
+    chip.textContent = typeName;
+    fragment.appendChild(chip);
+  });
+
+  target.appendChild(fragment);
+}
+
+//helper function that captures the repeated shape of renderMeta
+function makeMetaRow(key, value, extraClass) {
+  const row = document.createElement("tr");
+
+  const keyCell = document.createElement("td");
+  keyCell.className = "meta-key";
+  keyCell.textContent = key;
+
+  const valCell = document.createElement("td");
+  valCell.className = extraClass ? `meta-val ${extraClass}` : "meta-val";
+  valCell.textContent = value;
+
+  row.appendChild(keyCell);
+  row.appendChild(valCell);
+  return row;
 }
 
 export function renderMeta(pokemon, target) {
@@ -179,54 +203,62 @@ export function renderMeta(pokemon, target) {
 
   const hiddenAbility = pokemon.abilities.find((a) => a.is_hidden);
 
-  target.innerHTML = `
-  <table class="meta-table">
-    <tbody>
-      <tr>
-        <td class="meta-key">Height</td>
-        <td class="meta-val">${heightM} m</td>
-      </tr>
-      <tr>
-        <td class="meta-key">Weight</td>
-        <td class="meta-val">${weightKg} kg</td>
-      </tr>
-      <tr>
-        <td class="meta-key">Abilities</td>
-        <td class="meta-val">${escapeHTML(normalAbilities)}</td>
-      </tr>
-      ${
-        hiddenAbility
-          ? `
-      <tr>
-        <td class="meta-key">Hidden</td>
-        <td class="meta-val hidden-ability">${escapeHTML(hiddenAbility.ability.name)}</td>
-      </tr>`
-          : ""
-      }
-    </tbody>
-  </table>
-`;
+  const table = document.createElement("table");
+  table.className = "meta-table";
+  const tbody = document.createElement("tbody");
+
+  tbody.appendChild(makeMetaRow("Height", `${heightM} m`));
+  tbody.appendChild(makeMetaRow("Weight", `${weightKg} kg`));
+  tbody.appendChild(makeMetaRow("Abilities", normalAbilities));
+
+  if (hiddenAbility) {
+    tbody.appendChild(
+      makeMetaRow("Hidden", hiddenAbility.ability.name, "hidden-ability"),
+    );
+  }
+
+  table.appendChild(tbody);
+  target.textContent = "";
+  target.appendChild(table);
 }
 
 export function renderStats(pokemon, target) {
   //driven by the mainStats array, not pokemon.stats' own order
   //this guarantees index 0 is always hp, index 3 is always speed etc...
   //which is the guarantee highlighStat() depends on to compare bars by index between two cards
-  target.innerHTML = mainStats
-    .map((statName) => {
-      const stat = pokemon.stats.find((s) => s.stat.name === statName);
-      if (!stat) return;
-      return `
-       <div class="stat">
-        <span class="stat-name">${statName}</span>
-        <div class="stat-bar">
-         <div class= "stat-bar-fill" style="width: ${(stat.base_stat / MAX_STAT) * 100}%"></div>
-        </div>
-        <span class= "stat-value">${stat.base_stat}</span>
-       </div>
-      `;
-    })
-    .join("");
+  target.textContent = "";
+  const fragment = document.createDocumentFragment();
+
+  mainStats.forEach((statName) => {
+    const stat = pokemon.stats.find((s) => s.stat.name === statName);
+    if (!stat) return;
+
+    const row = document.createElement("div");
+    row.className = "stat";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "stat-name";
+    nameSpan.textContent = statName;
+
+    const barOuter = document.createElement("div");
+    barOuter.className = "stat-bar";
+
+    const barFill = document.createElement("div");
+    barFill.className = "stat-bar-fill";
+    barFill.style.width = `${(stat.base_stat / MAX_STAT) * 100}%`;
+    barOuter.appendChild(barFill);
+
+    const valueSpan = document.createElement("span");
+    valueSpan.className = "stat-value";
+    valueSpan.textContent = stat.base_stat;
+
+    row.appendChild(nameSpan);
+    row.appendChild(barOuter);
+    row.appendChild(valueSpan);
+    fragment.appendChild(row);
+  });
+
+  target.appendChild(fragment);
 }
 
 //rendering the type effectiveness
@@ -256,25 +288,42 @@ export function renderTypeEffectiveness(pokemon, target) {
     0: { text: "Immune", color: "#545a6e" },
   };
 
-  const rows = Object.entries(groups)
-    .filter(([, types]) => types.length > 0)
-    .map(([mult, types]) => {
-      const { text, color } = labels[mult];
-      const chips = types
-        .map(
-          (t) =>
-            `<span class="type" style="background-color:${typeColors[t] || "#777"}">${escapeHTML(t)}</span>`,
-        )
-        .join("");
-      return `
-        <div class="effectiveness-row">
-          <span class="effectiveness-label" style="color:${color}">${text}</span>
-          <div class="effectiveness-types">${chips}</div>
-        </div>`;
-    })
-    .join("");
+  target.textContent = "";
 
-  target.innerHTML = rows
-    ? `<h3 class= "section-label">Type Matchups</h3>${rows}`
-    : "";
+  const nonEmptyGroups = Object.entries(groups).filter(
+    ([, types]) => types.length > 0,
+  );
+  if (nonEmptyGroups.length === 0) return;
+
+  const heading = document.createElement("h3");
+  heading.className = "section-label";
+  heading.textContent = "Type Matchups";
+  target.appendChild(heading);
+
+  nonEmptyGroups.forEach(([mult, types]) => {
+    const { text, color } = labels[mult];
+
+    const row = document.createElement("div");
+    row.className = "effectiveness-label";
+
+    const label = document.createElement("span");
+    label.className = "effectiveness-label";
+    label.style.color = color;
+    label.textContent = text;
+
+    const chipContainer = document.createElement("div");
+    chipContainer.className = "effectiveness-types";
+
+    types.forEach((t) => {
+      const chip = document.createElement("span");
+      chip.className = "type";
+      chip.style.backgroundColor = typeColors[t] || "#777";
+      chip.textContent = t;
+      chipContainer.appendChild(chip);
+    });
+
+    row.appendChild(label);
+    row.appendChild(chipContainer);
+    target.appendChild(row);
+  });
 }

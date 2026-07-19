@@ -8,7 +8,6 @@ import {
 } from "./store.js";
 
 import { getCurrentPokemon } from "./state.js";
-import { escapeHTML } from "./sanitize.js";
 
 const teamBtn = document.getElementById("team-btn");
 const teamSlots = document.getElementById("team-slots");
@@ -39,6 +38,11 @@ function toggleTeam() {
   updateTeamBtn();
 }
 
+export function initTeam(onSelect) {
+  onSelectPokemon = onSelect;
+  teamBtn.addEventListener("click", toggleTeam);
+}
+
 //updating the button text and style depending on if a pokemon is on the team or not
 export function updateTeamBtn() {
   const currentPokemon = getCurrentPokemon();
@@ -51,7 +55,9 @@ export function updateTeamBtn() {
 
 export function renderTeam() {
   const team = getTeam();
-  teamSlots.innerHTML = "";
+  teamSlots.textContent = "";
+
+  const fragment = document.createDocumentFragment();
 
   for (let i = 0; i < MAX_TEAM; i++) {
     const slot = document.createElement("div");
@@ -59,36 +65,38 @@ export function renderTeam() {
 
     if (team[i]) {
       slot.classList.add("filled");
-      slot.innerHTML = `
-            <img src="${escapeHTML(team[i].sprite)}" alt="${escapeHTML(team[i].name)}" />
-            <button class="remove-team">X</button>
-            `;
 
-      // was: searchInput.value = team[i].name; searchPokemon();
-      // now: hand the name to whatever main.js told us "select" means
-      slot.querySelector("img").addEventListener("click", () => {
+      const img = document.createElement("img");
+      img.src = team[i].sprite;
+      img.alt = team[i].name;
+
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "remove-team";
+      removeBtn.textContent = "X";
+
+      img.addEventListener("click", () => {
         onSelectPokemon(team[i].name);
       });
 
-      //event to remove pokemon from team
-      slot.querySelector(".remove-team").addEventListener("click", (e) => {
+      removeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         removeFromTeam(team[i].name);
         renderTeam();
         updateTeamBtn();
       });
-    } else {
-      slot.innerHTML = `<span class="slot-empty">+</span>`;
-    }
-    teamSlots.appendChild(slot);
-  }
-  updateTeamBtn();
-}
 
-//main.js calls this once, on startup handing us the piece of
-//behavior we cant own ourselves:
-//what "select this pokemon" means
-export function initTeam(onSelect) {
-  onSelectPokemon = onSelect;
-  teamBtn.addEventListener("click", toggleTeam);
+      slot.appendChild(img);
+      slot.appendChild(removeBtn);
+    } else {
+      const emptySpan = document.createElement("span");
+      emptySpan.className = "slot-empty";
+      emptySpan.textContent = "+";
+      slot.appendChild(emptySpan);
+    }
+
+    fragment.appendChild(slot);
+  }
+
+  teamSlots.appendChild(fragment);
+  updateTeamBtn();
 }
