@@ -7,7 +7,6 @@ import {
   isFavorite,
 } from "./store.js";
 import { getCurrentPokemon } from "./state.js";
-import { escapeHTML } from "./sanitize.js";
 
 const favoritesToggle = document.getElementById("favorites-toggle");
 const favoritesDrawer = document.getElementById("favorites-drawer");
@@ -33,35 +32,57 @@ function closeDrawerFn() {
 
 export function renderFavorites() {
   const favorites = getFavorites();
-  favoritesContainer.innerHTML = "";
+  favoritesContainer.textContent = "";
 
   if (favorites.length === 0) {
-    favoritesContainer.innerHTML =
-      '<p style="color:#888; text-align:center; padding:20px;">No favorites yet</p>';
+    const emptyMsg = document.createElement("p");
+    emptyMsg.style.color = "#888";
+    emptyMsg.style.textAlign = "center";
+    emptyMsg.style.padding = "20px";
+    emptyMsg.textContent = "No favorites yet";
+    favoritesContainer.appendChild(emptyMsg);
     return;
   }
+
+  const fragment = document.createDocumentFragment();
 
   favorites.forEach((pokemon) => {
     const card = document.createElement("div");
     card.className = "favorite-card";
-    const name = escapeHTML(pokemon.name);
-    const sprite = escapeHTML(pokemon.sprite);
-    card.innerHTML = `
-      <img src="${sprite}" alt="${name}" />
-      <div class="favorite-card-info">
-        <div class="favorite-card-name">${name}</div>
-        <div class="favorite-card-id">#${String(pokemon.id).padStart(3, "0")}</div>
-      </div>
-      <button class="remove-favorite" data-name="${name}">x</button>
-    `;
+
+    const img = document.createElement("img");
+    img.src = pokemon.sprite;
+    img.alt = pokemon.name;
+
+    const info = document.createElement("div");
+    info.className = "favorite-card-info";
+
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "favorite-card-name";
+    nameDiv.textContent = pokemon.name;
+
+    const idDiv = document.createElement("div");
+    idDiv.className = "favorite-card-id";
+    idDiv.textContent = `#${String(pokemon.id).padStart(3, "0")}`;
+
+    info.appendChild(nameDiv);
+    info.appendChild(idDiv);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "remove-favorite";
+    removeBtn.textContent = "X";
+
+    card.appendChild(img);
+    card.appendChild(info);
+    card.appendChild(removeBtn);
 
     card.addEventListener("click", (e) => {
-      if (e.target.classList.contains("remove-favorite")) return;
+      if (e.target === removeBtn) return;
       onSelectPokemon(pokemon.name);
       closeDrawerFn();
     });
 
-    card.querySelector(".remove-favorite").addEventListener("click", (e) => {
+    removeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       removeFavorite(pokemon.name);
       renderFavorites();
@@ -70,6 +91,8 @@ export function renderFavorites() {
 
     favoritesContainer.appendChild(card);
   });
+
+  favoritesContainer.appendChild(fragment);
 }
 
 export function updateFavoriteBtn() {
