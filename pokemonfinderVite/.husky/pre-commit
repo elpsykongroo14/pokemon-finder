@@ -1,0 +1,1 @@
+cd pokemonfinderVite && npx lint-staged
