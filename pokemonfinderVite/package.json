@@ -8,13 +8,16 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
+    "test:coverage": "vitest --coverage",
     "test:watch": "vitest",
     "prepare": "cd .. && husky pokemonfinderVite/.husky"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.7.0",
@@ -22,6 +25,7 @@
     "jsdom": "^29.1.1",
     "lint-staged": "^17.1.0",
     "prettier": "^3.8.4",
+    "typescript": "^7.0.2",
     "vite": "^8.0.12",
     "vitest": "^4.1.9"
   },
