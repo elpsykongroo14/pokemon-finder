@@ -13,7 +13,7 @@ import {
   restoreLibraryState,
 } from "./tcglibrary.js";
 
-import { getSpriteUrl } from "./sprites.js";
+import { getSpriteUrl } from "./sprites";
 import { escapeHTML } from "./sanitize.js";
 
 import {

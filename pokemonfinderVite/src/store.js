@@ -1,7 +1,7 @@
 //single source of truth for all persistent data
 //everything that reads from or writes to localStorage lives here
 
-import { getSpriteUrl } from "./sprites.js";
+import { getSpriteUrl } from "./sprites";
 
 const FAVORITES_KEY = "pokemon_favorites";
 const TEAM_KEY = "pokemon_team";
