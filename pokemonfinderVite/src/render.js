@@ -3,7 +3,7 @@
 //no implicit "which element am i writing to" guessing.
 //caller always says exactly where the result goes. thats what lets both main.js's own card and comparemode.js's card reuse the exact same rendering logic
 
-import { getSpriteUrl } from "./sprites.js";
+import { getSpriteUrl } from "./sprites";
 
 //main.js's card and compareMode's card both render stats in this order
 //which is the only reason index-based comparison between the two cards (in compareMode.js) is safe to do
