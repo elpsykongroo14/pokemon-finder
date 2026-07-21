@@ -14,7 +14,7 @@ import {
 } from "./tcglibrary.js";
 
 import { getSpriteUrl } from "./sprites";
-import { escapeHTML } from "./sanitize.js";
+import { escapeHTML } from "./sanitize";
 
 import {
   renderSprite,

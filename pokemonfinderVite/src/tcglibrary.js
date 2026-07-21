@@ -5,7 +5,7 @@ import {
 } from "./api.js";
 
 import { pushState, getCurrentPokemon } from "./state.js";
-import { escapeHTML } from "./sanitize.js";
+import { escapeHTML } from "./sanitize";
 
 //all of this element's own- the pokemon card "view cards" button,
 //the library view itself, and everything inside the card panel/modal
