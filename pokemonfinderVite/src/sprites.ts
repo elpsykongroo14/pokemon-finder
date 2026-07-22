@@ -2,7 +2,7 @@
 //no network calls or DOM access, just one rule defined once:
 //prefer the official artwork, if it isnt available then fall back to the basic default sprite
 
-interface PokemonSprites {
+export interface PokemonSprites {
   front_default?: string | null;
   front_shiny?: string | null;
   other?: {

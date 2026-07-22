@@ -5,13 +5,15 @@
 // thats what makes it possible for favorites.js, team.js, compareMode.js and tcgLibrary.js
 //to all agree on the same answers without importing from each other
 
-let currentPokemon = null;
+import type { PokemonDetails } from "./type";
 
-export function getCurrentPokemon() {
+let currentPokemon: PokemonDetails | null = null;
+
+export function getCurrentPokemon(): PokemonDetails | null {
   return currentPokemon;
 }
 
-export function setCurrentPokemon(pokemon) {
+export function setCurrentPokemon(pokemon: PokemonDetails | null): void {
   currentPokemon = pokemon;
 }
 
@@ -19,7 +21,7 @@ export function setCurrentPokemon(pokemon) {
 //a new entry onto the browser's history stack so back/forward work.
 //every view change in the app (picking a pokemon, openning the library, opening a card) goes through this one function
 //nothing else in the app should call history.pushState directly
-export function pushState(params, title) {
+export function pushState(params: Record<string, string>, title: string): void {
   const urlParams = new URLSearchParams(params);
   history.pushState(
     //state object mirrors the params

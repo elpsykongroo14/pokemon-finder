@@ -4,7 +4,7 @@ import {
   fetchAllpokemonNames,
 } from "./api.js";
 
-import { pushState, getCurrentPokemon } from "./state.js";
+import { pushState, getCurrentPokemon } from "./state";
 import { escapeHTML } from "./sanitize";
 
 //all of this element's own- the pokemon card "view cards" button,

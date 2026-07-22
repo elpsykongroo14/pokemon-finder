@@ -7,7 +7,7 @@ import {
   MAX_TEAM,
 } from "./store.js";
 
-import { getCurrentPokemon } from "./state.js";
+import { getCurrentPokemon } from "./state";
 
 const teamBtn = document.getElementById("team-btn");
 const teamSlots = document.getElementById("team-slots");
