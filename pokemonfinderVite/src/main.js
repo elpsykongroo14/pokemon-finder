@@ -24,7 +24,7 @@ import {
   renderTypeEffectiveness,
 } from "./render.js";
 
-import { setCurrentPokemon, getCurrentPokemon, pushState } from "./state.js";
+import { setCurrentPokemon, getCurrentPokemon, pushState } from "./state";
 
 import { initTeam, renderTeam, updateTeamBtn } from "./team.js";
 

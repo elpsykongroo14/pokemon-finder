@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { getCurrentPokemon, setCurrentPokemon, pushState } from "./state.js";
+import { getCurrentPokemon, setCurrentPokemon, pushState } from "./state";
 
 function makePokemon(name, id) {
   return { name, id };
