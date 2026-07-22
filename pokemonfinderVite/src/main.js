@@ -1,6 +1,6 @@
 import "./styles.css";
 
-import { getHistory, saveToHistory } from "./store.js";
+import { getHistory, saveToHistory } from "./store";
 
 import { fetchPokemon, fetchSpecies, fetchEvolutionChain } from "./api.js";
 

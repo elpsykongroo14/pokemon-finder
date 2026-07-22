@@ -6,7 +6,7 @@ import {
   removeFavorite,
   isFavorite,
 } from "./store.js";
-import { getCurrentPokemon } from "./state.js";
+import { getCurrentPokemon } from "./state";
 
 const favoritesToggle = document.getElementById("favorites-toggle");
 const favoritesDrawer = document.getElementById("favorites-drawer");

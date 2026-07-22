@@ -1,7 +1,7 @@
 //uses same shape as favorites.js/team.js: own state, own DOM, callback injection for the one main.js specific decision wwe cant make ouselves ("what does existing compare mode display")
 //the one difference from those two: this module also needs main.js's pure render helpers (rendersprite/renderTypes/renderStats/renderTypeEffectiveness), handed in the same way
 
-import { getCurrentPokemon } from "./state.js";
+import { getCurrentPokemon } from "./state";
 import { mainStats } from "./render.js";
 
 //compare mode's elements
