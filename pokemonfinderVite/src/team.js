@@ -5,7 +5,7 @@ import {
   removeFromTeam,
   isOnTeam,
   MAX_TEAM,
-} from "./store.js";
+} from "./store";
 
 import { getCurrentPokemon } from "./state";
 

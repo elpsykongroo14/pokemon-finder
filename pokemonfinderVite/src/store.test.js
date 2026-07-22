@@ -11,7 +11,7 @@ import {
   MAX_TEAM,
   getHistory,
   saveToHistory,
-} from "./store.js";
+} from "./store";
 
 function makePokemon(name, id) {
   return { name, id, sprites: { front_default: `${name}.png` } };

@@ -1,6 +1,7 @@
 //single source of truth for all persistent data
 //everything that reads from or writes to localStorage lives here
 
+import type { PokemonDetails, FavoritePokemon } from "./type";
 import { getSpriteUrl } from "./sprites";
 
 const FAVORITES_KEY = "pokemon_favorites";
@@ -11,11 +12,11 @@ const MAX_TEAM = 6;
 
 //Favorites
 
-export function getFavorites() {
+export function getFavorites(): FavoritePokemon[] {
   return JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
 }
 
-export function addFavorite(pokemon) {
+export function addFavorite(pokemon: PokemonDetails): void {
   const favorites = getFavorites();
   const already = favorites.some((f) => f.name === pokemon.name);
   if (already) return;
@@ -28,22 +29,30 @@ export function addFavorite(pokemon) {
   localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
 }
 
-export function removeFavorite(name) {
+export function removeFavorite(name: string): void {
   const updated = getFavorites().filter((f) => f.name !== name);
   localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
 }
 
-export function isFavorite(name) {
+export function isFavorite(name: string): boolean {
   return getFavorites().some((f) => f.name === name);
 }
 
 //Team
 
-export function getTeam() {
+export function getTeam(): FavoritePokemon[] {
   return JSON.parse(localStorage.getItem(TEAM_KEY) || "[]");
 }
 
-export function addToTeam(pokemon) {
+interface TeamOk {
+  ok: true;
+}
+interface TeamError {
+  error: string;
+}
+type TeamResult = TeamOk | TeamError;
+
+export function addToTeam(pokemon: PokemonDetails): TeamResult {
   const team = getTeam();
   if (team.length >= MAX_TEAM) return { error: `Team is full` };
   if (team.some((p) => p.name === pokemon.name))
@@ -58,12 +67,12 @@ export function addToTeam(pokemon) {
   return { ok: true };
 }
 
-export function removeFromTeam(name) {
+export function removeFromTeam(name: string): void {
   const updated = getTeam().filter((p) => p.name !== name);
   localStorage.setItem(TEAM_KEY, JSON.stringify(updated));
 }
 
-export function isOnTeam(name) {
+export function isOnTeam(name: string): boolean {
   return getTeam().some((p) => p.name === name);
 }
 
@@ -74,7 +83,7 @@ export function getHistory() {
   return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
 }
 
-export function saveToHistory(query) {
+export function saveToHistory(query: string): void {
   const existing = getHistory();
   const unique = [...new Set([query, ...existing])];
   localStorage.setItem(
