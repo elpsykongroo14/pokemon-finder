@@ -1,8 +1,4 @@
-import {
-  fetchTCGCards,
-  fetchTCGCardsBatch,
-  fetchAllpokemonNames,
-} from "./api.js";
+import { fetchTCGCards, fetchTCGCardsBatch, fetchAllpokemonNames } from "./api";
 
 import { pushState, getCurrentPokemon } from "./state";
 import { escapeHTML } from "./sanitize";

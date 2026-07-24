@@ -1,6 +1,14 @@
 //all network requests live here
 //functions return data or throw - they never touch DOM
 
+import type {
+  PokemonDetails,
+  PokemonSpecies,
+  EvolutionChain,
+  NamedAPIResourceList,
+  TCGCard,
+} from "./type";
+
 //base URLs
 //POKE_API is a public, shared API - same url for every developer
 //so its fine as a hardcoded constant.
@@ -9,23 +17,23 @@
 //that makes enviroment config, not a universal constant env var insted.
 //see .env.example for what to set locally
 const POKE_API = "https://pokeapi.co/api/v2";
- 
+
 const TCG_PROXY = import.meta.env.VITE_TCG_PROXY;
 
 //simple in memory cache
 //a plain object used as a key value store
 //key: the pokemon name or id
 //value: the full api response object
-const pokeCache = {};
+const pokeCache: Record<string, PokemonDetails> = {};
 //caches species and evolution-chain responses by their own URL,
 //same reasoning as pokeCache: this data is static for the life of the session
-const speciesCache = {};
-const evoChainCache = {};
+const speciesCache: Record<string, PokemonSpecies> = {};
+const evoChainCache: Record<string, EvolutionChain> = {};
 
 //exported so test can reset cache state between runs - see api.test.js
 //(the app itself never needs to call this; pokemon data never changes
 //within a session, so the cache is meant to live for the app's whole life)
-export function clearPokeCache() {
+export function clearPokeCache(): void {
   for (const key in pokeCache) delete pokeCache[key];
   for (const key in speciesCache) delete speciesCache[key];
   for (const key in evoChainCache) delete evoChainCache[key];
@@ -39,7 +47,7 @@ export function clearPokeCache() {
 //it handles the two failure modes of fetch:
 //network failure = fetch() throws a typeError
 //bad status code = response.ok is false, we throw manuallly
-async function getJSON(url, options = {}) {
+async function getJSON<T>(url: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, options);
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} for: ${url}`);
@@ -48,31 +56,35 @@ async function getJSON(url, options = {}) {
 }
 
 //Pokemon
-export async function fetchPokemon(nameOrId) {
+export async function fetchPokemon(
+  nameOrId: string | number,
+): Promise<PokemonDetails> {
   const key = String(nameOrId).toLowerCase().trim();
- 
+
   //return cached result if we have it
   if (pokeCache[key]) return pokeCache[key];
- 
-  const data = await getJSON(`${POKE_API}/pokemon/${key}`);
- 
+
+  const data = await getJSON<PokemonDetails>(`${POKE_API}/pokemon/${key}`);
+
   //Store in cache before returning
   pokeCache[key] = data;
   return data;
 }
 
 //species
-export async function fetchSpecies(url) {
+export async function fetchSpecies(url: string): Promise<PokemonSpecies> {
   if (speciesCache[url]) return speciesCache[url];
-  const data = await getJSON(url);
+  const data = await getJSON<PokemonSpecies>(url);
   speciesCache[url] = data;
   return data;
 }
 
 //evolution chain
-export async function fetchEvolutionChain(url) {
+export async function fetchEvolutionChain(
+  url: string,
+): Promise<EvolutionChain> {
   if (evoChainCache[url]) return evoChainCache[url];
-  const data = await getJSON(url);
+  const data = await getJSON<EvolutionChain>(url);
   evoChainCache[url] = data;
   return data;
 }
@@ -80,12 +92,14 @@ export async function fetchEvolutionChain(url) {
 //theres only ever one possible result here (theres no "which pokemon" argument to key bey)
 //so unliike pokeCache/speciesCache/evoChainCache this doesnt need to be an object
 //a single variable that starts out empty and gets filled in once is enough
-let allNamesCache = null;
- 
-export async function fetchAllpokemonNames() {
+let allNamesCache: string[] | null = null;
+
+export async function fetchAllpokemonNames(): Promise<string[]> {
   if (allNamesCache) return allNamesCache;
- 
-  const data = await getJSON(`${POKE_API}/pokemon?limit=1025`);
+
+  const data = await getJSON<NamedAPIResourceList>(
+    `${POKE_API}/pokemon?limit=1025`,
+  );
   //the api returns {results: [{name, url}, ...]}
   //we only need the names
   allNamesCache = data.results.map((p) => p.name);
@@ -94,10 +108,19 @@ export async function fetchAllpokemonNames() {
 
 //-------TCG
 
+interface TCGSearchOptions {
+  orderBy?: string;
+  pageSize?: number;
+}
+
+interface TCGCardsResponse {
+  data: TCGCard[];
+}
+
 export async function fetchTCGCards(
-  pokemonName,
-  { orderBy = "-set.releaseDate", pageSize = 250 } = {},
-) {
+  pokemonName: string,
+  { orderBy = "-set.releaseDate", pageSize = 250 }: TCGSearchOptions = {},
+): Promise<TCGCard[]> {
   //fail loud and specific here, right  where the assumption is used -
   //without this, a missing env var silently becomes the literal string
   //"undefined" in the url below, and getJSON's error just says "HTTP 404" for undefined/?q=...",
@@ -125,17 +148,17 @@ export async function fetchTCGCards(
   const params = new URLSearchParams({
     q: searchExpr,
     orderBy,
-    pageSize,
+    pageSize: String(pageSize),
   });
- 
+
   const url = `${TCG_PROXY}/?${params}`;
- 
+
   //TCG api wraps results in a 'data' array
-  const data = await getJSON(url);
+  const data = await getJSON<TCGCardsResponse>(url);
   return data.data || [];
 }
 
-export async function fetchTCGCardsBatch(names) {
+export async function fetchTCGCardsBatch(names: string[]): Promise<TCGCard[]> {
   //this fires multiple requests in parallel using Promise.all
   //and flattens the results into one array
   //used by library featured Cards display
@@ -145,7 +168,7 @@ export async function fetchTCGCardsBatch(names) {
       fetchTCGCards(name, { pageSize: 60 })
         //if one name fails, return empty array instead of crashing whole batch
         //.catch() on individual promises
-        .catch(() => []),
+        .catch(() => [] as TCGCard[]),
     ),
   );
   return results.flat();
