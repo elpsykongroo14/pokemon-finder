@@ -2,7 +2,7 @@ import "./styles.css";
 
 import { getHistory, saveToHistory } from "./store";
 
-import { fetchPokemon, fetchSpecies, fetchEvolutionChain } from "./api.js";
+import { fetchPokemon, fetchSpecies, fetchEvolutionChain } from "./api";
 
 import {
   initTCGLibrary,
