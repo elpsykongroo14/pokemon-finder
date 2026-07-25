@@ -46,6 +46,7 @@ function buildDOM() {
           <p id="flavor-text"></p>
           <button id="shiny-btn">Toggle Shiny</button>
           <div id="pokemonStats"></div>
+          <h3 class="evolution-title">Evolution Chain</h3>
           <div id="evolution-chain"></div>
           <div id="type-effectiveness"></div>
           <button id="favorite-btn"></button>
