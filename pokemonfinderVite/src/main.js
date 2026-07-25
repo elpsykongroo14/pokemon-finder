@@ -39,7 +39,7 @@ import {
   isCompareMode,
   displayComparedPokemon,
   announceFirstPick,
-} from "./comparemode.js";
+} from "./comparemode";
 
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");

@@ -135,27 +135,23 @@ const TYPE_CHART: Record<string, TypeMatchup> = {
 function computeDefensiveChart(pokemonTypes: string[]): Record<string, number> {
   //starting every attacking type at 1x multiplier
   const multipliers: Record<string, number> = {};
-  Object.keys(TYPE_CHART).forEach((type) => {
-    multipliers[type] = 1;
-  });
-
-  //for each of the types (could be 1 or 2)
-  //loop through every attacking type and adjust the multiplier
-  pokemonTypes.forEach((defendingType) => {
-    Object.keys(TYPE_CHART).forEach((attackingType) => {
-      const chart = TYPE_CHART[attackingType];
-
+  Object.entries(TYPE_CHART).forEach(([attackingType, chart]) => {
+    let multiplier = 1;
+    //for each of the types (could be 1 or 2)
+    //loop through every attacking type and adjust the multiplier
+    pokemonTypes.forEach((defendingType) => {
       if (chart.double?.includes(defendingType)) {
         //deals 2x against this defending type
-        multipliers[attackingType] *= 2;
+        multiplier *= 2;
       } else if (chart.half?.includes(defendingType)) {
         //deals 0.5x against this defending type
-        multipliers[attackingType] *= 0.5;
+        multiplier *= 0.5;
       } else if (chart.immune?.includes(defendingType)) {
-        multipliers[attackingType] *= 0; // 0x = immune;
+        multiplier *= 0; // 0x = immune;
       }
       //if its not listed, multiplier stays at 1x
     });
+    multipliers[attackingType] = multiplier;
   });
   return multipliers;
 }
@@ -303,7 +299,8 @@ export function renderTypeEffectiveness(
   const multipliers = computeDefensiveChart(pokemonTypes);
 
   //group the types by their multiplier value
-  const groups: Record<string, string[]> = {
+  type MultiplierKey = "4" | "2" | "0.5" | "0.25" | "0";
+  const groups: Record<MultiplierKey, string[]> = {
     "4": [],
     "2": [],
     "0.5": [],
@@ -341,7 +338,9 @@ export function renderTypeEffectiveness(
   target.appendChild(heading);
 
   nonEmptyGroups.forEach(([mult, types]) => {
-    const { text, color } = labels[mult];
+    const labelInfo = labels[mult];
+    if (!labelInfo) return;
+    const { text, color } = labelInfo;
 
     const row = document.createElement("div");
     row.className = "effectiveness-label";

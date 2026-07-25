@@ -2,46 +2,77 @@
 //the one difference from those two: this module also needs main.js's pure render helpers (rendersprite/renderTypes/renderStats/renderTypeEffectiveness), handed in the same way
 
 import { getCurrentPokemon } from "./state";
-import { mainStats } from "./render.js";
+import {
+  mainStats,
+  renderSprite,
+  renderStats,
+  renderTypes,
+  renderTypeEffectiveness,
+} from "./render";
+import { PokemonDetails } from "./type";
+
+//helper function that converts a silent null into a loud diagnosable failure the moment the module loads,
+//rather than a confusing crash the first time a button is clicked
+function requireElement<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) {
+    throw new Error(`Expected element #${id} to exist in the DOM`);
+  }
+  return el as T;
+}
 
 //compare mode's elements
-const compareBtn = document.getElementById("compare-btn");
-const compareHint = document.getElementById("compare-hint");
-const compareCard = document.getElementById("compare-card");
-const compareImg = document.getElementById("compareImg");
-const compareName = document.getElementById("compareName");
-const compareId = document.getElementById("compareId");
-const compareTypes = document.getElementById("compareTypes");
-const compareStats = document.getElementById("compareStats");
-const compareTypeEffectiveness = document.getElementById(
+const compareBtn = requireElement<HTMLButtonElement>("compare-btn");
+const compareHint = requireElement<HTMLElement>("compare-hint");
+const compareCard = requireElement<HTMLElement>("compare-card");
+const compareImg = requireElement<HTMLImageElement>("compareImg");
+const compareName = requireElement<HTMLElement>("compareName");
+const compareId = requireElement<HTMLElement>("compareId");
+const compareTypes = requireElement<HTMLElement>("compareTypes");
+const compareStats = requireElement<HTMLElement>("compareStats");
+const compareTypeEffectiveness = requireElement<HTMLElement>(
   "compare-type-effectiveness",
 );
-
 //"foreign" elements - they belong conceptually to other features but compare mode  has to hide/show them while its ative
 //grabbing our own reference here is the same thing favorites.js/team.js already do for errorDiv -
 //its fine for two files to each hold reference to the same elements for two different reasons
-const shinyBtn = document.getElementById("shiny-btn");
-const favoriteBtn = document.getElementById("favorite-btn");
-const evolutionSection = document.querySelector(".evolution-title");
-const evolutionContainer = document.getElementById("evolution-chain");
-const teamBtn = document.getElementById("team-btn");
-const flavorText = document.getElementById("flavor-text");
-const pokemonMeta = document.getElementById("pokemon-meta");
-const typeEffectiveness = document.getElementById("type-effectiveness");
-const tcgBtn = document.getElementById("tcg-btn");
-const container = document.querySelector(".container");
-const pokemonStats = document.getElementById("pokemonStats"); //read-only - main card's stat bars, for index-based comparison
+const container = requireQuery<HTMLElement>(".container");
+const shinyBtn = requireElement<HTMLElement>("shiny-btn");
+const favoriteBtn = requireElement<HTMLElement>("favorite-btn");
+const evolutionContainer = requireElement<HTMLElement>("evolution-chain");
+const teamBtn = requireElement<HTMLElement>("team-btn");
+const flavorText = requireElement<HTMLElement>("flavor-text");
+const pokemonMeta = requireElement<HTMLElement>("pokemon-meta");
+const typeEffectiveness = requireElement<HTMLElement>("type-effectiveness");
+const tcgBtn = requireElement<HTMLElement>("tcg-btn");
+const pokemonStats = requireElement<HTMLElement>("pokemonStats"); //read-only - main card's stat bars, for index-based comparison
+
+//evolutionSection needs its own small helper or an inline null check rather than requireElement, since querySelector can return null for the same "might not exist" reason
+function requireQuery<T extends HTMLElement>(selector: string): T {
+  const el = document.querySelector<T>(selector);
+  if (!el) {
+    throw new Error(`Expected ${selector} to exist in the DOM`);
+  }
+  return el;
+}
+
+const evolutionSection = requireQuery<HTMLElement>(".evolution-title");
 
 //initially we aren't comparing any pokemon
 let compareMode = false;
-let comparePokemon = null;
+let comparePokemon: PokemonDetails | null = null;
 
 //set once by initCompareMode() - same circular import workaround as favorites.js/team.js's onSelectPokemon, just with more than one dependency
-let onExitCompare = () => {};
-let renderSpriteFn = () => {};
-let renderTypesFn = () => {};
-let renderStatsFn = () => {};
-let renderTypeEffectivenessFn = () => {};
+type RenderSpriteFn = typeof renderSprite;
+type RenderTypesFn = typeof renderTypes;
+type RenderStatsFn = typeof renderStats;
+type RenderTypeEffectivenessFn = typeof renderTypeEffectiveness;
+
+let onExitCompare: (pokemon: PokemonDetails) => void = () => {};
+let renderSpriteFn: RenderSpriteFn = () => {};
+let renderTypesFn: RenderTypesFn = () => {};
+let renderStatsFn: RenderStatsFn = () => {};
+let renderTypeEffectivenessFn: RenderTypeEffectivenessFn = () => {};
 
 export function isCompareMode() {
   return compareMode;
@@ -49,7 +80,7 @@ export function isCompareMode() {
 
 //called by main.js after the user picks a *first* pokemon while compare mode is already on,
 //but before a second one exists to compare against
-export function announceFirstPick(pokemonName) {
+export function announceFirstPick(pokemonName: string): void {
   compareHint.textContent = `⚔️ Now search a second Pokémon to compare with ${pokemonName}`;
 }
 
@@ -61,7 +92,7 @@ export function toggleCompareMode() {
 
   compareBtn.classList.toggle("active", compareMode);
 
-  const cardsWrapper = document.getElementById("cards-wrapper");
+  const cardsWrapper = requireElement<HTMLElement>("cards-wrapper");
 
   if (!compareMode) {
     comparePokemon = null;
@@ -109,14 +140,14 @@ export function toggleCompareMode() {
 
 //now to display the compared pokemon
 
-export function displayComparedPokemon(pokemon) {
+export function displayComparedPokemon(pokemon: PokemonDetails): void {
   const currentPokemon = getCurrentPokemon();
   //same element main.js uses, grabbed fresh here rather than threaded through as another dependency
-  const errorDiv = document.getElementById("error");
+  const errorDiv = requireElement<HTMLElement>("error");
 
   errorDiv.classList.add("hidden");
 
-  if (pokemon.id === currentPokemon.id) {
+  if (!currentPokemon || pokemon.id === currentPokemon.id) {
     errorDiv.textContent = "Choose a different Pokémon to compare.";
     errorDiv.classList.remove("hidden");
     return;
@@ -141,13 +172,14 @@ export function displayComparedPokemon(pokemon) {
 
 //we are going to loop through the stats and compare them after both pokemon are loaded
 
-function highlightStats() {
+function highlightStats(): void {
   const currentPokemon = getCurrentPokemon();
   if (!currentPokemon || !comparePokemon) return;
+  const compareTarget = comparePokemon; //frozen into a const so the closure below can trust the narrowing
 
   mainStats.forEach((statName, index) => {
     const p1Stat = currentPokemon.stats.find((s) => s.stat.name === statName);
-    const p2Stat = comparePokemon.stats.find((s) => s.stat.name === statName);
+    const p2Stat = compareTarget.stats.find((s) => s.stat.name === statName);
 
     if (!p1Stat || !p2Stat) return;
 
@@ -176,26 +208,30 @@ function highlightStats() {
     //same guard as the "stats are equal" branch above -
     //p1bar/p2bar come from  an index lookup that assumes the DOM always had exactly mainstats.length bars in the same order as mainStats itself.
     //thats true today but nothing enforces it, so we dont trust it blindly here
-    if (p1Bar) {
-      p1Bar.classList.toggle("win", p1Wins);
-      p2Bar.classList.toggle("lose", !p1Wins);
-    }
-    if (p2Bar) {
-      p2Bar.classList.toggle("win", !p1Wins);
-      p2Bar.classList.toggle("lose", p1Wins);
-    }
+    if (p1Bar) p1Bar.classList.toggle("win", p1Wins);
+    if (p2Bar) p2Bar.classList.toggle("lose", !p1Wins);
+    if (p2Bar) p2Bar.classList.toggle("win", !p1Wins);
+    if (p1Bar) p1Bar.classList.toggle("lose", p1Wins);
   });
 }
 
 //main.js calls this once on startup, handing us the pieces we cant own ourselves:
 //"what exiting compare mode" redisplays, and the rendering helpers we need to fill our own card with
+interface CompareModeDeps {
+  onExitCompare: (pokemon: PokemonDetails) => void;
+  renderSprite: RenderSpriteFn;
+  renderTypes: RenderTypesFn;
+  renderStats: RenderStatsFn;
+  renderTypeEffectiveness: RenderTypeEffectivenessFn;
+}
+
 export function initCompareMode({
   onExitCompare: exit,
   renderSprite,
   renderTypes,
   renderStats,
   renderTypeEffectiveness,
-}) {
+}: CompareModeDeps): void {
   onExitCompare = exit;
   renderSpriteFn = renderSprite;
   renderTypesFn = renderTypes;
