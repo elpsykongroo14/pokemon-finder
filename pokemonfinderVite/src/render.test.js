@@ -6,7 +6,7 @@ import {
   renderStats,
   renderTypeEffectiveness,
   mainStats,
-} from "./render.js";
+} from "./render";
 
 function makePokemon(overrides = {}) {
   return {
