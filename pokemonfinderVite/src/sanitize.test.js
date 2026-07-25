@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { escapeHTML } from "./sanitize.js";
+import { escapeHTML } from "./sanitize";
 
 describe("escapeHTML", () => {
   it("leaves plain text unchanged", () => {

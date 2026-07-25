@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getSpriteUrl } from "./sprites.js";
+import { getSpriteUrl } from "./sprites";
 
 describe("getSpriteUrl", () => {
   it("returns official artwork when it exists", () => {

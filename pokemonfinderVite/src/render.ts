@@ -4,6 +4,7 @@
 //caller always says exactly where the result goes. thats what lets both main.js's own card and comparemode.js's card reuse the exact same rendering logic
 
 import { getSpriteUrl } from "./sprites";
+import { PokemonDetails } from "./type";
 
 //main.js's card and compareMode's card both render stats in this order
 //which is the only reason index-based comparison between the two cards (in compareMode.js) is safe to do
@@ -15,11 +16,13 @@ export const mainStats = [
   "speed",
   "special-attack",
   "special-defense",
-];
+] as const;
+
+export type statName = (typeof mainStats)[number];
 
 const MAX_STAT = 225;
 
-const typeColors = {
+const typeColors: Record<string, string> = {
   fire: "#ff6b35",
   water: "#4a90d9",
   grass: "#5db85d",
@@ -40,12 +43,18 @@ const typeColors = {
   normal: "#a8a878",
 };
 
+interface TypeMatchup {
+  double?: string[];
+  half?: string[];
+  immune?: string[];
+}
+
 // this is the types effectiveness, the data is static so we keep it in the code to avoid unnecessary network round trips
 // "double" means 2× damage to those types
 // "half"   means 0.5× damage to those types
 // "immune" means 0× damage to those types
 // Omitted = 1× (normal damage)
-const TYPE_CHART = {
+const TYPE_CHART: Record<string, TypeMatchup> = {
   normal: { immune: ["ghost"], half: ["rock", "steel"] },
   fire: {
     double: ["grass", "ice", "bug", "steel"],
@@ -123,9 +132,9 @@ const TYPE_CHART = {
 
 //now to work on the type's weaknesses and strengths
 //we are going to compute how much damage each attacking type deals
-function computeDefensiveChart(pokemonTypes) {
+function computeDefensiveChart(pokemonTypes: string[]): Record<string, number> {
   //starting every attacking type at 1x multiplier
-  const multipliers = {};
+  const multipliers: Record<string, number> = {};
   Object.keys(TYPE_CHART).forEach((type) => {
     multipliers[type] = 1;
   });
@@ -151,11 +160,21 @@ function computeDefensiveChart(pokemonTypes) {
   return multipliers;
 }
 
-export function renderSprite(pokemon, target) {
-  target.src = getSpriteUrl(pokemon.sprites);
+export function renderSprite(
+  pokemon: PokemonDetails,
+  target: HTMLImageElement,
+): void {
+  target.src = getSpriteUrl(pokemon.sprites) ?? "";
+  //?? "" explantion:
+  //getSpriteUrl returns string | null per sprites.ts but .src on HTMLImageElement is typed string,
+  //not string | null. assigning null to it would compile in loose JS but fails under strict.
+  //silently assiging null to .src would coerce it to the string "null" and the browser would try to load an image from a url spelled "null"
 }
 
-export function renderTypes(pokemon, target) {
+export function renderTypes(
+  pokemon: PokemonDetails,
+  target: HTMLElement,
+): void {
   target.textContent = ""; //clear whatever was rendered last time
 
   const fragment = document.createDocumentFragment();
@@ -173,7 +192,11 @@ export function renderTypes(pokemon, target) {
 }
 
 //helper function that captures the repeated shape of renderMeta
-function makeMetaRow(key, value, extraClass) {
+function makeMetaRow(
+  key: string,
+  value: string,
+  extraClass?: string,
+): HTMLTableRowElement {
   const row = document.createElement("tr");
 
   const keyCell = document.createElement("td");
@@ -189,7 +212,7 @@ function makeMetaRow(key, value, extraClass) {
   return row;
 }
 
-export function renderMeta(pokemon, target) {
+export function renderMeta(pokemon: PokemonDetails, target: HTMLElement): void {
   //displaying the physical info
   const heightM = (pokemon.height / 10).toFixed(1);
   const weightKg = (pokemon.weight / 10).toFixed(1);
@@ -222,7 +245,10 @@ export function renderMeta(pokemon, target) {
   target.appendChild(table);
 }
 
-export function renderStats(pokemon, target) {
+export function renderStats(
+  pokemon: PokemonDetails,
+  target: HTMLElement,
+): void {
   //driven by the mainStats array, not pokemon.stats' own order
   //this guarantees index 0 is always hp, index 3 is always speed etc...
   //which is the guarantee highlighStat() depends on to compare bars by index between two cards
@@ -250,7 +276,7 @@ export function renderStats(pokemon, target) {
 
     const valueSpan = document.createElement("span");
     valueSpan.className = "stat-value";
-    valueSpan.textContent = stat.base_stat;
+    valueSpan.textContent = String(stat.base_stat);
 
     row.appendChild(nameSpan);
     row.appendChild(barOuter);
@@ -264,28 +290,42 @@ export function renderStats(pokemon, target) {
 //rendering the type effectiveness
 //target: the dom element to render into
 //it defaults to primary card's element so existing calls like renderTypeEffectiveness(pokemon) still work without passing a second argument
-export function renderTypeEffectiveness(pokemon, target) {
+
+interface effectivenessLabel {
+  text: string;
+  color: string;
+}
+export function renderTypeEffectiveness(
+  pokemon: PokemonDetails,
+  target: HTMLElement,
+): void {
   const pokemonTypes = pokemon.types.map((t) => t.type.name);
   const multipliers = computeDefensiveChart(pokemonTypes);
 
   //group the types by their multiplier value
-  const groups = { 4: [], 2: [], 0.5: [], 0.25: [], 0: [] };
+  const groups: Record<string, string[]> = {
+    "4": [],
+    "2": [],
+    "0.5": [],
+    "0.25": [],
+    "0": [],
+  };
 
   Object.entries(multipliers).forEach(([type, mult]) => {
-    if (mult === 4) groups[4].push(type);
-    if (mult === 2) groups[2].push(type);
-    if (mult === 0.5) groups[0.5].push(type);
-    if (mult === 0.25) groups[0.25].push(type);
-    if (mult === 0) groups[0].push(type);
+    if (mult === 4) groups["4"].push(type);
+    if (mult === 2) groups["2"].push(type);
+    if (mult === 0.5) groups["0.5"].push(type);
+    if (mult === 0.25) groups["0.25"].push(type);
+    if (mult === 0) groups["0"].push(type);
   });
 
   //only rendering groups in HTML
-  const labels = {
-    4: { text: "4× Weak", color: "#e74c3c" },
-    2: { text: "2× Weak", color: "#e8754a" },
-    0.5: { text: "½× Resist", color: "#4a9eff" },
-    0.25: { text: "¼× Resist", color: "#3a7fd4" },
-    0: { text: "Immune", color: "#545a6e" },
+  const labels: Record<string, effectivenessLabel> = {
+    "4": { text: "4× Weak", color: "#e74c3c" },
+    "2": { text: "2× Weak", color: "#e8754a" },
+    "0.5": { text: "½× Resist", color: "#4a9eff" },
+    "0.25": { text: "¼× Resist", color: "#3a7fd4" },
+    "0": { text: "Immune", color: "#545a6e" },
   };
 
   target.textContent = "";

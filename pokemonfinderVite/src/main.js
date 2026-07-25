@@ -22,7 +22,7 @@ import {
   renderMeta,
   renderStats,
   renderTypeEffectiveness,
-} from "./render.js";
+} from "./render";
 
 import { setCurrentPokemon, getCurrentPokemon, pushState } from "./state";
 

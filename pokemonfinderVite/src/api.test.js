@@ -7,7 +7,7 @@ import {
   fetchTCGCardsBatch,
   fetchAllpokemonNames,
   clearPokeCache,
-} from "./api.js";
+} from "./api";
 
 function fakeResponse(ok, body) {
   return { ok, status: ok ? 200 : 404, json: async () => body };
