@@ -1,5 +1,5 @@
 //shared, null safe DOM lookup helpers.
-//pulled out of comparemode.ts omce favorites.ts and team.ts needed the exact same logic
+//pulled out of comparemode.ts once favorites.ts and team.ts needed the exact same logic
 //
 //both helpers turn a silent `null` (the honest answer typescript's DOM gives, since it cant see index.html) into a loud failure
 //at module load time rather than a confusing crash the first time a user clicks a button that was never found.

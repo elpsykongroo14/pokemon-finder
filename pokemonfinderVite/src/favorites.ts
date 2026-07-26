@@ -1,30 +1,34 @@
-// src/favorites.js
-
-import { getFavorites, addFavorite, removeFavorite, isFavorite } from "./store";
+import {
+  getFavorites,
+  addFavorite,
+  removeFavorite,
+  isFavorite,
+} from "./store.js";
 import { getCurrentPokemon } from "./state";
+import { requireElement } from "./dom";
 
-const favoritesToggle = document.getElementById("favorites-toggle");
-const favoritesDrawer = document.getElementById("favorites-drawer");
-const overlay = document.getElementById("overlay");
-const closeDrawer = document.getElementById("close-drawer");
-const favoriteBtn = document.getElementById("favorite-btn");
-const favoritesContainer = document.getElementById("favorites-container");
+const favoritesToggle = requireElement<HTMLButtonElement>("favorites-toggle");
+const favoritesDrawer = requireElement<HTMLElement>("favorites-drawer");
+const overlay = requireElement<HTMLElement>("overlay");
+const closeDrawer = requireElement<HTMLButtonElement>("close-drawer");
+const favoriteBtn = requireElement<HTMLButtonElement>("favorite-btn");
+const favoritesContainer = requireElement<HTMLElement>("favorites-container");
 
 // set once by initFavorites() — this is how this module asks "go search this pokemon"
 // without importing searchPokemon (and creating a circular import between favorites.js and main.js)
-let onSelectPokemon = () => {};
+let onSelectPokemon: (name: string) => void = () => {};
 
-function openDrawer() {
+function openDrawer(): void {
   favoritesDrawer.classList.add("open");
   overlay.classList.remove("hidden");
 }
 
-function closeDrawerFn() {
+function closeDrawerFn(): void {
   favoritesDrawer.classList.remove("open");
   overlay.classList.add("hidden");
 }
 
-export function renderFavorites() {
+export function renderFavorites(): void {
   const favorites = getFavorites();
   favoritesContainer.textContent = "";
 
@@ -45,7 +49,7 @@ export function renderFavorites() {
     card.className = "favorite-card";
 
     const img = document.createElement("img");
-    img.src = pokemon.sprite;
+    img.src = pokemon.sprite ?? "";
     img.alt = pokemon.name;
 
     const info = document.createElement("div");
@@ -89,7 +93,7 @@ export function renderFavorites() {
   favoritesContainer.appendChild(fragment);
 }
 
-export function updateFavoriteBtn() {
+export function updateFavoriteBtn(): void {
   const currentPokemon = getCurrentPokemon();
   if (!currentPokemon) return;
 
@@ -98,7 +102,7 @@ export function updateFavoriteBtn() {
   favoriteBtn.classList.toggle("favorited", favorited);
 }
 
-function toggleFavorite() {
+function toggleFavorite(): void {
   const currentPokemon = getCurrentPokemon();
   if (!currentPokemon) return;
 
@@ -114,7 +118,7 @@ function toggleFavorite() {
 
 // main.js calls this once, on startup, handing us the one piece of behavior
 // we can't own ourselves: what "select this pokemon" means.
-export function initFavorites(onSelect) {
+export function initFavorites(onSelect: (name: string) => void): void {
   onSelectPokemon = onSelect;
 
   favoritesToggle.addEventListener("click", openDrawer);
