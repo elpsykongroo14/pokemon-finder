@@ -300,3 +300,99 @@ Added a second caching layer, this time inside the Worker itself instead of the 
 Cloudflare KV fixes that by giving the Worker its own persistent, distributed key-value store — separate from the browser entirely, shared across every visitor. I implemented the classic cache-aside pattern: check KV first using the request's query string as the key (prefixed tcg: so the namespace stays safe to reuse later), and only fall through to the real TCG API on a miss. Successful responses get written back into KV with a 24-hour expirationTtl; failed ones deliberately don't get cached, since caching an error would mean everyone gets that same broken response for a full day instead of just whoever hit the bad moment.
 Also added an X-Cache: HIT/MISS response header purely for observability — no functional purpose, just a way to actually see the cache working instead of guessing from network timing.
 Provisioned the namespace with wrangler kv namespace create TCG_CACHE and wired it into wrangler.jsonc as a new binding, same pattern as the rate limiter I set up earlier. Learned that KV is eventually consistent (writes can take up to ~60s to propagate globally) — a real constraint for some use cases, but a non-issue against a 24-hour TTL.
+
+07-18-26 — starting the TypeScript migration: setup, and why now instead of after the React rewrite
+
+decided to migrate to TypeScript before the React rewrite, not after or alongside it. the idea: port cleaner, already-typed code into React instead of untyped code, and learn TS inside ancodebase I already understand instead of learning TS and a new framework at the same time. going leaf-to-root modules with no internal dependencies first, modules everything else depends on last since a file converted before its own imports are typed just gets `any` at every import boundary, which is the appearance of safety with none of the substance.
+
+installed typescript as a dev dependency, added tsconfig.json:
+target ES2022, lib ES2022+DOM, module ESNext, moduleResolution bundler (matches how Vite actually resolves things, not how Node does) allowJs: true, checkJs: false, lets .ts and .js files coexist and import from each other during the migration, but tsc only checks the files that have actually been converted. means the migration can happen one file at a time without the whole app needing to compile clean on day one.
+the tradeoff is real though: any .js file calling into an already-typed .ts file is invisible to the compiler, so the safety only covers the boundary you've actually crossed strict: true. no half-measures, going in with every strict flag on from the start rather than turning them on one at a time later added "typecheck": "tsc --noEmit" to package.json scripts - noEmit because Vite handles the actual build/transpile step, tsc here is purely a checker, never asked to produce output files.
+
+07-19-26 — type.ts: the shared shape vocabulary
+
+built type.ts first, before touching any real module. a file with zero runtime behavior, purely interfaces for the compiler to check other files against. same "one place to agree" idea as state.js already applied to values, just applied to shapes instead.
+
+modeled PokemonDetails, FavoritePokemon (the smaller shape actually persisted to localStorage not the full API response, just enough to render a list item and look one back up by name), and the pokeAPI's own building blocks (NamedAPIResource, APIResource almost everything the API returns references another resource this way instead of embedding it).
+
+deliberate rule I kept coming back to: type only what you use, and that's a per endpoint decision, not a global one. PokemonSpecies only models evolution_chain and flavor_text_entries because
+main.js only ever reads those two fields off it the rest of that endpoint's payload (evolution conditions, trigger details) is real data pokeAPI sends back, but nothing in this codebase touches
+it, so it stays unmodeled. same logic for ChainLink: evolution_details is real and pokeAPI sends it, but buildEvolutionTree() only ever reads .species.name and .evolves_to, walking the tree structurally without asking why an evolution happens, so that's the only two fields on the interface. PokemonDetails is the one exception, modeled broader, because many files consume it (render.js, favorites.js, team.js, comparemode.js) and each reads different pieces.
+
+TCGCard was sketched from actual field reads in tcglibrary.js rather than guessing at the upstream TCG API's full schema more reliable than trying to model a response shape I haven't fully seen,
+and it keeps the same "model what render code actually consumes" principle consistent across both external APIs this app talks to.
+
+07-20-26 — sprites.ts and sanitize.ts: the two smallest leaves
+
+sprites.ts: PokemonSprites interface models exactly the nested shape getSpriteUrl reads (front_default, front_shiny, and the nested official-artwork variants), optional fields throughout since pokeAPI doesn't guarantee any sprite variant is actually populated for a given pokemon. getSpriteUrl takes an options object ({ shiny = false }: SpriteOptions = {}) rather than
+a positional boolean, so call sites read getSpriteUrl(sprites, { shiny: true }) instead of
+getSpriteUrl(sprites, true) - a bare positional boolean tells you nothing at the call site about
+what it means without going and checking the function signature.
+
+sanitize.ts: escapeHTML(str: string | null | undefined): string - the input type documents
+something that used to only live in a comment, that this function was always expected to handle a
+missing name gracefully (returning "" via the ?? "" fallback) rather than assuming a well-formed
+string always arrives. nothing about the escaping logic itself changed, this was purely making an
+existing, already-defensive function's contract explicit.
+
+07-21-26 — state.ts, store.ts, api.ts: the shared-state and persistence layer
+
+state.ts: currentPokemon typed PokemonDetails | null (it starts null before any search, so the type has to say so), pushState(params: Record<string, string>, title: string) Record<string,
+string> because URLSearchParams only ever deals in string keys and values, never anything richer.
+
+store.ts turned into a good example of a pattern worth remembering: addToTeam() used to update the error div directly from inside the store module, mixing "does this succeed" with "how do we show that to the user." split it into a discriminated union return type instead
+
+interface TeamOk { ok: true }
+interface TeamError { error: string }
+type TeamResult = TeamOk | TeamError
+
+so addToTeam() just reports what happened and hands the decision of how to display it back to the caller. TypeScript can actually check a discriminated union like this: narrowing on `if ("error" in result)` or `if (result.ok)` gives you the right branch's fields with no cast needed, which isn't something a plain `{ ok, error }` object with both fields always present would've gotten for free.
+
+one loose end worth flagging instead of quietly leaving it: getHistory() in store.ts still has no return type annotation, so it inherits `any` from JSON.parse() same as the others did before this
+pass - getFavorites() and getTeam() both got explicit `: FavoritePokemon[]` return types, getHistory() didn't, purely an oversight rather than a decision. leaving it noted here since it's
+the kind of gap that's easy to lose track of once the rest of a file looks typed.
+
+api.ts: getJSON<T>(url, options) is a private generic helper every fetch function (fetchPokemon, fetchSpecies, fetchEvolutionChain, fetchTCGCards) calls through it, and the generic lets each call site say what shape it expects back (getJSON<PokemonDetails>(...),
+getJSON<PokemonSpecies>(...)) instead of writing the same try/fetch/check-response.ok boilerplate four times with four different hardcoded return types. the three in-memory caches (pokeCache,
+speciesCache, evoChainCache) are typed Record<string, T> keyed by url or name/id depending on what each function actually receives. TCGSearchOptions and TCGCardsResponse are small interfaces local
+to this file, not added to type.ts they're shaped around this one function's options object and this one response's wrapper, not shared with anything else, so they didn't earn a spot in the
+shared vocabulary file.
+
+10 files converted total by the end of this pass (type.ts, sprites.ts, sanitize.ts, state.ts, store.ts, api.ts) plus tsconfig/package.json setup. render.js and comparemode.js are next the two leaf-most modules still left, and the ones where the mainStats index-coupling assumption in comparemode.js either gets formally checked or exposed as unsound once noUncheckedIndexedAccess is in the picture.
+
+07-25-26 — render.js → render.ts, comparemode.js → comparemode.ts
+
+next two in the leaf-to-root order. render.js only had one internal import (sprites.ts, already typed) so it was a true leaf everything else it references (typeColors, TYPE_CHART, MAX_STAT, mainStats) is defined in the file itself. comparemode.js went second because it imports from both state.ts and render.js, and converting it before render.ts would've meant importing mainStats as an implicit any which is exactly the value this whole migration is meant to protect, so leaf-first isn't just tidiness, it's the thing that makes the later file's types mean anything.
+
+mainStats got the "derive the type from the array" treatment: `as const` on the array, then `type StatName = (typeof mainStats)[number]` pulls the literal union straight out of the values
+instead of hand-writing a second list that could drift from the first.
+
+turned on noUncheckedIndexedAccess in tsconfig.json not part of strict, opt-in on its own. this is the flag that actually mattered for this pair of files, because it's the only thing that changes
+how TypeScript treats `someArray[i]` and `someRecord[key]`: instead of assuming the result is always there, it types it `T | undefined` and makes you prove otherwise. everywhere in render.js/comparemode.js that does an index lookup by a computed key had to be revisited once this went on.
+
+computeDefensiveChart in render.js was looking up TYPE_CHART[attackingType] and multipliers[attackingType] by a key pulled from Object.keys() - structurally always valid (the key always comes from the same object being indexed) but invisible to the compiler as a guarantee. rewrote it to iterate Object.entries(TYPE_CHART) directly instead of keys-then-lookup, which sidesteps the possibly-undefined problem entirely rather than guarding around it didn't need a null check anywhere once the lookup itself was gone.
+groups (in renderTypeEffectiveness) is only ever indexed by five literal strings I wrote myself, never a variable typing it Record<string, string[]> was throwing that away. narrowed it to
+Record<MultiplierKey, string[]> over a five-value literal union, which makes the known key accesses exact (no undefined) with zero other changes. labels[mult], by contrast, actually can't be made exact mult comes back from Object.entries(groups), and Object.entries/Object.keys always widen the key type to plain string no matter how precisely the source object is typed. real TS limitation, not a mistake on my part. guarded it the same way renderStats already guards its own stat lookup (`if (!labelInfo) return;`) rather than reaching for a non-null assertion.
+
+bugs the migration surfaced before a single test ran:
+
+comparemode.js used to grab all its DOM elements with bare document.getElementById(id), typed HTMLElement | null under strict, and just... used them, uncaught, exactly the way the runtime DOM API allows. wrote a requireElement<T>(id) helper that throws a descriptive error immediately if the element's missing, instead of letting a null ride quietly into a later .classList call.
+same idea for the one querySelector-based lookup (.evolution-title) via a requireQuery<T>(selector) helper needed its own version because getElementById and querySelector take different kinds of strings (bare id vs css selector) and requireElement's error message assumes an id.
+
+comparePokemon was declared `let comparePokemon = null;` with no annotation, TypeScript infers that as implicit any for a module-scope let, which meant every place comparePokemon.stats got
+read afterward was completely unchecked, silently. annotated it explicitly as PokemonDetails | null, which turned the existing `if (!comparePokemon) return` guard from "a good habit" into "a thing the compiler now enforces."
+
+discovered a TypeScript rule the hard way: narrowing a mutable outer variable (comparePokemon, a `let`) doesn't survive being read inside a forEach closure, even immediately after a null check that would satisfy the compiler for a plain const. currentPokemon (a local const inside highlightStats) narrowed fine into the same closure; comparePokemon didn't, because it's reassigned elsewhere in the file and TS won't trust a closure not to run after some other reassignment. fixed by copying the narrowed value into a fresh local const (`const compareTarget = comparePokemon;`) right after the guard, then reading compareTarget inside the closure instead same trick, applied deliberately this time instead of by accident.
+
+p1Bar/p2Bar regression, again: same bug class fixed on 07-16 (checked one variable, touched both) crept back into highlightStats during this rewrite, just relocated to a different pair of lines `if (p1Bar) { p1Bar...; p2Bar... }` touches p2Bar without checking it independently,
+even though p1Bar and p2Bar come from two separate querySelectorAll calls on two separate cards and neither implies the other exists. noUncheckedIndexedAccess caught it at compile time this round instead of needing a hand-written regression test to catch it at runtime. mental model from 07-16 holds: a defensive check is a claim about the world, and it has to be checked per-variable, not per-branch.
+
+test suite came back with two real gaps, not code bugs in the usual sense:
+
+requireElement got called with ".container" (a css class selector) instead of an id, while restoring a declaration I'd dropped in an earlier draft document.getElementById(".container") correctly finds nothing, since no element has an id literally spelled ".container". the thrown error (`Expected element #.container to exist in the DOM`) pointed straight at the mismatch.
+fixed by routing it through requireQuery instead, same as evolutionSection. that one bug cascaded into main.test.js failing 15/15 with an identical stack trace not 15 separate bugs, one bug hit at module-import time, because comparemode.ts's top-level `const container = ...` runs the moment the module loads, and main.js imports comparemode.js at its own top level. worth remembering: "N tests failed with the same trace" almost always means "one import-time failure," not N independent problems.
+after that fix, main.test.js failed again on a different element.evolution-title, this time actually missing from main.test.js's own mock DOM (present in comparemode.test.js's fixture and in the real index.html, absent here). this one wasn't a code bug at all the old document.querySelector(".evolution-title") used to just hold null silently if nothing matched, and main.test.js's suite never happened to exercise the code path that would've dereferenced it. requireQuery doesn't tolerate that anymore, so it surfaced a fixture gap that's been sitting there the whole time. added the missing <h3 class="evolution-title"> line to main.test.js's fixture to match index.html.
+
+mental model worth keeping: requireElement/requireQuery didn't create either of these failures, they exposed two things that were already broken (a wrong selector, a stale fixture) but had been
+silently tolerated because the old code just held null and hoped nothing downstream needed it today. "the migration broke my tests" and "the migration is the first thing to actually check this"
+look identical from the terminal, worth checking which one it is before assuming the typed version regressed something the untyped version had right.
