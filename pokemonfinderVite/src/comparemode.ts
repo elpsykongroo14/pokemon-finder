@@ -10,16 +10,7 @@ import {
   renderTypeEffectiveness,
 } from "./render";
 import { PokemonDetails } from "./type";
-
-//helper function that converts a silent null into a loud diagnosable failure the moment the module loads,
-//rather than a confusing crash the first time a button is clicked
-function requireElement<T extends HTMLElement>(id: string): T {
-  const el = document.getElementById(id);
-  if (!el) {
-    throw new Error(`Expected element #${id} to exist in the DOM`);
-  }
-  return el as T;
-}
+import { requireElement, requireQuery } from "./dom";
 
 //compare mode's elements
 const compareBtn = requireElement<HTMLButtonElement>("compare-btn");
@@ -46,15 +37,6 @@ const pokemonMeta = requireElement<HTMLElement>("pokemon-meta");
 const typeEffectiveness = requireElement<HTMLElement>("type-effectiveness");
 const tcgBtn = requireElement<HTMLElement>("tcg-btn");
 const pokemonStats = requireElement<HTMLElement>("pokemonStats"); //read-only - main card's stat bars, for index-based comparison
-
-//evolutionSection needs its own small helper or an inline null check rather than requireElement, since querySelector can return null for the same "might not exist" reason
-function requireQuery<T extends HTMLElement>(selector: string): T {
-  const el = document.querySelector<T>(selector);
-  if (!el) {
-    throw new Error(`Expected ${selector} to exist in the DOM`);
-  }
-  return el;
-}
 
 const evolutionSection = requireQuery<HTMLElement>(".evolution-title");
 
