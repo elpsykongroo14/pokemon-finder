@@ -1,11 +1,6 @@
 // src/favorites.js
 
-import {
-  getFavorites,
-  addFavorite,
-  removeFavorite,
-  isFavorite,
-} from "./store.js";
+import { getFavorites, addFavorite, removeFavorite, isFavorite } from "./store";
 import { getCurrentPokemon } from "./state";
 
 const favoritesToggle = document.getElementById("favorites-toggle");
@@ -15,9 +10,8 @@ const closeDrawer = document.getElementById("close-drawer");
 const favoriteBtn = document.getElementById("favorite-btn");
 const favoritesContainer = document.getElementById("favorites-container");
 
-// set once by initFavorites() — this is how this module asks "go search this
-// pokemon" without importing searchPokemon (and creating a circular import
-// between favorites.js and main.js)
+// set once by initFavorites() — this is how this module asks "go search this pokemon"
+// without importing searchPokemon (and creating a circular import between favorites.js and main.js)
 let onSelectPokemon = () => {};
 
 function openDrawer() {
