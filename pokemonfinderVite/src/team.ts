@@ -9,16 +9,17 @@ import {
 
 import { getCurrentPokemon } from "./state";
 
-const teamBtn = document.getElementById("team-btn");
-const teamSlots = document.getElementById("team-slots");
-const errorDiv = document.getElementById("error");
+import { requireElement } from "./dom";
 
+const teamBtn = requireElement<HTMLButtonElement>("team-btn");
+const teamSlots = requireElement<HTMLElement>("team-slots");
+const errorDiv = requireElement<HTMLElement>("error");
 //set once by initTeam() - same circular import workaround as favorites.js
 //this lets this module ask "go search for this pokemon" without
 //importing searchPokemon directly from main.js
-let onSelectPokemon = () => {};
+let onSelectPokemon: (name: string) => void = () => {};
 
-function toggleTeam() {
+function toggleTeam(): void {
   const currentPokemon = getCurrentPokemon();
   if (!currentPokemon) return;
 
@@ -26,7 +27,7 @@ function toggleTeam() {
     removeFromTeam(currentPokemon.name);
   } else {
     const result = addToTeam(currentPokemon);
-    if (result.error) {
+    if ("error" in result) {
       errorDiv.textContent = result.error;
       errorDiv.classList.remove("hidden");
       setTimeout(() => errorDiv.classList.add("hidden"), 3000);
@@ -38,13 +39,13 @@ function toggleTeam() {
   updateTeamBtn();
 }
 
-export function initTeam(onSelect) {
+export function initTeam(onSelect: (name: string) => void): void {
   onSelectPokemon = onSelect;
   teamBtn.addEventListener("click", toggleTeam);
 }
 
 //updating the button text and style depending on if a pokemon is on the team or not
-export function updateTeamBtn() {
+export function updateTeamBtn(): void {
   const currentPokemon = getCurrentPokemon();
   if (!currentPokemon) return;
 
@@ -53,7 +54,7 @@ export function updateTeamBtn() {
   teamBtn.classList.toggle("on-team", onTeam);
 }
 
-export function renderTeam() {
+export function renderTeam(): void {
   const team = getTeam();
   teamSlots.textContent = "";
 
@@ -63,24 +64,25 @@ export function renderTeam() {
     const slot = document.createElement("div");
     slot.className = "team-slot";
 
-    if (team[i]) {
+    const memeber = team[i];
+    if (memeber) {
       slot.classList.add("filled");
 
       const img = document.createElement("img");
-      img.src = team[i].sprite;
-      img.alt = team[i].name;
+      img.src = memeber.sprite ?? "";
+      img.alt = memeber.name;
 
       const removeBtn = document.createElement("button");
       removeBtn.className = "remove-team";
       removeBtn.textContent = "X";
 
       img.addEventListener("click", () => {
-        onSelectPokemon(team[i].name);
+        onSelectPokemon(memeber.name);
       });
 
       removeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        removeFromTeam(team[i].name);
+        removeFromTeam(memeber.name);
         renderTeam();
         updateTeamBtn();
       });
