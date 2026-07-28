@@ -133,7 +133,7 @@ export function isLibraryOpen(): boolean {
 //that would refetch and reshuffle a fresh batch of cards, which is wrong
 //for back/forward navigation. this just makes the chrome match the history entry, and re-opens a search if one was open
 
-interface LibraryHistoryState {
+export interface LibraryHistoryState {
   view: string;
   search?: string;
 }
