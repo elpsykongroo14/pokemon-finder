@@ -2,28 +2,30 @@ import { fetchTCGCards, fetchTCGCardsBatch, fetchAllpokemonNames } from "./api";
 
 import { pushState, getCurrentPokemon } from "./state";
 import { escapeHTML } from "./sanitize";
-
+import { requireElement, requireQuery } from "./dom";
+import { TCGCard } from "./type";
 //all of this element's own- the pokemon card "view cards" button,
 //the library view itself, and everything inside the card panel/modal
 //none of these are queried anywhere outside this file
-const tcgBtn = document.getElementById("tcg-btn");
-const libraryBtn = document.getElementById("library-btn");
-const libraryView = document.getElementById("library-view");
-const libraryBack = document.getElementById("library-back");
-const librarySearchInput = document.getElementById("library-search");
-const librarySearchBtn = document.getElementById("library-search-btn");
-const cardPanel = document.getElementById("card-panel");
-const cardPanelBack = document.getElementById("card-panel-back");
-const cardPanelTitle = document.getElementById("card-panel-title");
-const cardGrid = document.getElementById("card-grid");
-const sortSelect = document.getElementById("sort-select");
+const tcgBtn = requireElement<HTMLButtonElement>("tcg-btn");
+const libraryBtn = requireElement<HTMLButtonElement>("library-btn");
+const libraryView = requireElement<HTMLElement>("library-view");
+const libraryBack = requireElement<HTMLButtonElement>("library-back");
+const librarySearchInput = requireElement<HTMLInputElement>("library-search");
+const librarySearchBtn =
+  requireElement<HTMLButtonElement>("library-search-btn");
+const cardPanel = requireElement<HTMLElement>("card-panel");
+const cardPanelBack = requireElement<HTMLButtonElement>("card-panel-back");
+const cardPanelTitle = requireElement<HTMLElement>("card-panel-title");
+const cardGrid = requireElement<HTMLElement>("card-grid");
+const sortSelect = requireElement<HTMLSelectElement>("sort-select");
 
 //in-memory store for currently loaded TCG cards.
-let currentTCGCards = [];
+let currentTCGCards: TCGCard[] = [];
 
 //rarity ranking map
 //converting rarity from strings to numbers and ranking them up from highest number to lowest
-const RARITY_RANK = {
+const RARITY_RANK: Record<string, number> = {
   "Secret Rare": 9,
   "Special Illustration Rare": 8,
   "Illustration Rare": 7,
@@ -44,13 +46,15 @@ const RARITY_RANK = {
 };
 
 //shuffling the names we have
-function shuffleArray(arr) {
+function shuffleArray<T>(arr: T[]): T[] {
   //copying so we don't mutate the original aray
   const shuffled = [...arr];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    //swap
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    //swap, i and j are always valid indices by construction
+    //(i counts down from length -1 and j is always between 0 and i)
+    //so the "possibly undefined" noUncheckedIndexedAccess is flagging here is a false positive the algorith already rules out
+    [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
   }
 
   return shuffled;
@@ -58,7 +62,7 @@ function shuffleArray(arr) {
 
 //safe function:
 //it takes a plain text message and css class then safely puts it into cardGrid no matter what the message contains
-function setCardGridMessage(text, className) {
+function setCardGridMessage(text: string, className: string): void {
   cardGrid.innerHTML = "";
   const p = document.createElement("p");
   p.className = className;
@@ -66,8 +70,8 @@ function setCardGridMessage(text, className) {
   cardGrid.appendChild(p);
 }
 
-let onEnterLibrary = () => {};
-let onExitLibrary = () => {};
+let onEnterLibrary: () => void = () => {};
+let onExitLibrary: () => void = () => {};
 
 //the following functions are SPA navigation functions, toggling visibility using css instead of reloading the page
 export async function showLibrary() {
@@ -105,7 +109,7 @@ export async function showLibrary() {
   }
 }
 
-export function hideLibrary() {
+export function hideLibrary(): void {
   const currentPokemon = getCurrentPokemon();
   libraryView.classList.add("hidden");
   onExitLibrary();
@@ -120,7 +124,7 @@ export function hideLibrary() {
   }
 }
 
-export function isLibraryOpen() {
+export function isLibraryOpen(): boolean {
   return !libraryView.classList.contains("hidden");
 }
 
@@ -128,7 +132,12 @@ export function isLibraryOpen() {
 //virew === "library". delibrately does not call showLibrary()
 //that would refetch and reshuffle a fresh batch of cards, which is wrong
 //for back/forward navigation. this just makes the chrome match the history entry, and re-opens a search if one was open
-export function restoreLibraryState(state) {
+
+interface LibraryHistoryState {
+  view: string;
+  search?: string;
+}
+export function restoreLibraryState(state: LibraryHistoryState): void {
   onEnterLibrary();
   libraryView.classList.remove("hidden");
 
@@ -144,24 +153,25 @@ export function restoreLibraryState(state) {
 //now for the sorting part
 
 //reading currentTCGCards and returning a new sorted array without mutating currentTCGCards itself
-export function getSortedCards() {
+export function getSortedCards(): TCGCard[] {
   const sortValue = sortSelect.value;
   //[...currentTCGCards] creates a shallow copy which sort will operate on
   const cards = [...currentTCGCards];
 
   if (sortValue === "newest") {
     cards.sort((a, b) =>
-      (b.set.releaseDate || "").localeCompare(a.set.releaseDate || ""),
+      (b.set?.releaseDate ?? "").localeCompare(a.set?.releaseDate ?? ""),
     );
   } else if (sortValue === "oldest") {
     cards.sort((a, b) =>
-      (a.set.releaseDate || "").localeCompare(b.set.releaseDate || ""),
+      (a.set?.releaseDate ?? "").localeCompare(b.set?.releaseDate ?? ""),
     );
   } else if (sortValue === "rarity") {
     //looking up each card's rarity string in the RARITY_RANK map, if it isn't found, fall back to 0
     //subtracting a from b so higher rank = earlier in array (descending)
     cards.sort(
-      (a, b) => (RARITY_RANK[b.rarity] ?? 0) - (RARITY_RANK[a.rarity] ?? 0),
+      (a, b) =>
+        (RARITY_RANK[b.rarity ?? ""] ?? 0) - (RARITY_RANK[a.rarity ?? ""] ?? 0),
     );
   }
 
@@ -171,7 +181,7 @@ export function getSortedCards() {
 //here's the rendering part
 
 //the function takes an array card objects and builds the DOM
-export function renderCardGrid(cards) {
+export function renderCardGrid(cards: TCGCard[]): void {
   cardGrid.innerHTML = "";
 
   cards.forEach((card) => {
@@ -230,12 +240,18 @@ cardModal.innerHTML = `
 `;
 document.body.appendChild(cardModal);
 
-const cardModalImg = cardModal.querySelector("#card-modal-img");
-const cardModalName = cardModal.querySelector(".card-modal-name");
-const cardModalMeta = cardModal.querySelector(".card-modal-meta");
-const cardModalFlavor = cardModal.querySelector(".card-modal-flavor");
+const cardModalImg = requireQuery<HTMLImageElement>(
+  "#card-modal-img",
+  cardModal,
+);
+const cardModalName = requireQuery<HTMLElement>(".card-modal-name", cardModal);
+const cardModalMeta = requireQuery<HTMLElement>(".card-modal-meta", cardModal);
+const cardModalFlavor = requireQuery<HTMLElement>(
+  ".card-modal-flavor",
+  cardModal,
+);
 
-function openCardModal(card) {
+function openCardModal(card: TCGCard): void {
   cardModalImg.src = card.images?.large || card.images?.small || "";
   cardModalImg.alt = card.name;
   cardModalName.textContent = card.name;
@@ -262,7 +278,7 @@ function openCardModal(card) {
     )
     .join("");
 
-  // flavorText is the italic lore text printed on the card — lovely detail,
+  // flavorText is the italic lore text printed on the card lovely detail,
   // but only present on some cards (mostly older sets and certain rarities)
   cardModalFlavor.textContent = card.flavorText || "";
   cardModalFlavor.classList.toggle("hidden", !card.flavorText);
@@ -271,27 +287,25 @@ function openCardModal(card) {
   document.body.style.overflow = "hidden";
 }
 
-function closeCardModal() {
+function closeCardModal(): void {
   cardModal.classList.add("hidden");
   document.body.style.overflow = "";
 }
 
 //closing the modal
-cardModal
-  .querySelector(".card-modal-backdrop")
-  .addEventListener("click", closeCardModal);
-cardModal
-  .querySelector(".card-modal-close")
-  .addEventListener("click", closeCardModal);
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !cardModal.classList.contains("hidden"))
-    closeCardModal();
-});
+requireQuery<HTMLElement>(".card-modal-backdrop", cardModal).addEventListener(
+  "click",
+  closeCardModal,
+);
+requireQuery<HTMLElement>(".card-modal-close", cardModal).addEventListener(
+  "click",
+  closeCardModal,
+);
 
 //library search part
 
 //this is the entry point for when a user types a pokemon name and hits search in library view, showCardPanel() handles the fetching
-export function searchLibrary() {
+export function searchLibrary(): void {
   const query = librarySearchInput.value.trim();
   if (!query) return;
   showCardPanel(query);
@@ -299,7 +313,7 @@ export function searchLibrary() {
 
 //this functions takes a name, and fetches all its available cards
 
-export async function showCardPanel(pokemonName) {
+export async function showCardPanel(pokemonName: string): Promise<void> {
   pushState(
     { view: "library", search: pokemonName },
     `${pokemonName} - TCG Cards`,
@@ -337,7 +351,7 @@ export async function showCardPanel(pokemonName) {
 }
 
 //going back to search results without re-fetching anything
-function hideCardPanel() {
+function hideCardPanel(): void {
   cardPanel.classList.add("hidden");
   currentTCGCards = [];
 }
@@ -346,7 +360,16 @@ function hideCardPanel() {
 //main.js hands over the one thing it owns that we need
 //(getCurrentPokemon we already get from state.js - this is really just the two chrom callbacks)
 //plus wires up the one button that lives in the pokemon detail view but triggers library behavior.
-export function initTCGLibrary({ enterLibrary, exitLibrary }) {
+
+interface LibraryCallbacks {
+  enterLibrary: () => void;
+  exitLibrary: () => void;
+}
+
+export function initTCGLibrary({
+  enterLibrary,
+  exitLibrary,
+}: LibraryCallbacks): void {
   onEnterLibrary = enterLibrary;
   onExitLibrary = exitLibrary;
 

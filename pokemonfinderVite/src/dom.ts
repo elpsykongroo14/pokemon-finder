@@ -12,8 +12,11 @@ export function requireElement<T extends HTMLElement>(id: string): T {
   return el as T;
 }
 
-export function requireQuery<T extends HTMLElement>(selector: string): T {
-  const el = document.querySelector<T>(selector);
+export function requireQuery<T extends HTMLElement>(
+  selector: string,
+  root: ParentNode = document,
+): T {
+  const el = root.querySelector<T>(selector);
   if (!el) {
     throw new Error(`Expected ${selector} to exist in the DOM`);
   }
