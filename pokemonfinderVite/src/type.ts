@@ -77,9 +77,14 @@ export interface ChainLink {
   evolves_to: ChainLink[];
 }
 
+export interface EvolutionNode {
+  name: string;
+  children: EvolutionNode[];
+}
+
 export interface EvolutionChain {
   id: number;
-  chain: ChainLink[];
+  chain: ChainLink;
 }
 
 //the wrapper shape every pokeAPI "list" endpoint returns,

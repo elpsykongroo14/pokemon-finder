@@ -11,9 +11,11 @@ import {
   hideLibrary,
   isLibraryOpen,
   restoreLibraryState,
-} from "./tcglibrary.js";
+} from "./tcglibrary";
+import type { LibraryHistoryState } from "./tcglibrary";
 
 import { getSpriteUrl } from "./sprites";
+import type { PokemonSprites } from "./sprites";
 import { escapeHTML } from "./sanitize";
 
 import {
@@ -26,13 +28,9 @@ import {
 
 import { setCurrentPokemon, getCurrentPokemon, pushState } from "./state";
 
-import { initTeam, renderTeam, updateTeamBtn } from "./team.js";
+import { initTeam, renderTeam, updateTeamBtn } from "./team";
 
-import {
-  initFavorites,
-  renderFavorites,
-  updateFavoriteBtn,
-} from "./favorites.js";
+import { initFavorites, renderFavorites, updateFavoriteBtn } from "./favorites";
 
 import {
   initCompareMode,
@@ -41,35 +39,38 @@ import {
   announceFirstPick,
 } from "./comparemode";
 
-const searchInput = document.getElementById("searchInput");
-const searchBtn = document.getElementById("searchBtn");
-const randomBtn = document.getElementById("randomBtn");
-const pokemonCard = document.getElementById("pokemonCard");
-const errorDiv = document.getElementById("error");
-const pokemonImg = document.getElementById("pokemonImg");
-const pokemonName = document.getElementById("pokemonName");
-const pokemonId = document.getElementById("pokemonId");
-const pokemonTypes = document.getElementById("pokemonTypes");
-const pokemonStats = document.getElementById("pokemonStats");
-const spinner = document.getElementById("spinner");
-const historyContainer = document.getElementById("search-history");
-const shinyBtn = document.getElementById("shiny-btn");
-const evolutionContainer = document.getElementById("evolution-chain");
-const favoritesToggle = document.getElementById("favorites-toggle");
-const teamStrip = document.getElementById("team-strip");
-const flavorText = document.getElementById("flavor-text");
-const pokemonMeta = document.getElementById("pokemon-meta");
-const typeEffectiveness = document.getElementById("type-effectiveness");
-const mainContainer = document.querySelector(".container");
+import { requireElement, requireQuery } from "./dom";
+import type { PokemonDetails, ChainLink, EvolutionNode } from "./type";
+
+const searchInput = requireElement<HTMLInputElement>("searchInput");
+const searchBtn = requireElement<HTMLButtonElement>("searchBtn");
+const randomBtn = requireElement<HTMLButtonElement>("randomBtn");
+const pokemonCard = requireElement<HTMLDivElement>("pokemonCard");
+const errorDiv = requireElement<HTMLDivElement>("error");
+const pokemonImg = requireElement<HTMLImageElement>("pokemonImg");
+const pokemonName = requireElement<HTMLHeadingElement>("pokemonName");
+const pokemonId = requireElement<HTMLDivElement>("pokemonId");
+const pokemonTypes = requireElement<HTMLDivElement>("pokemonTypes");
+const pokemonStats = requireElement<HTMLDivElement>("pokemonStats");
+const spinner = requireElement<HTMLDivElement>("spinner");
+const historyContainer = requireElement<HTMLDivElement>("search-history");
+const shinyBtn = requireElement<HTMLButtonElement>("shiny-btn");
+const evolutionContainer = requireElement<HTMLDivElement>("evolution-chain");
+const favoritesToggle = requireElement<HTMLButtonElement>("favorites-toggle");
+const teamStrip = requireElement<HTMLDivElement>("team-strip");
+const flavorText = requireElement<HTMLParagraphElement>("flavor-text");
+const pokemonMeta = requireElement<HTMLDivElement>("pokemon-meta");
+const typeEffectiveness = requireElement<HTMLDivElement>("type-effectiveness");
+const mainContainer = requireQuery<HTMLDivElement>(".container");
 
 const MAX_POKEMON = 1025;
 
 //initially we aren't displaying any shiny sprites
 let isShiny = false;
-let currentSprites = null;
+let currentSprites: PokemonSprites | null = null;
 
 //toggling shiny version
-function toggleShiny() {
+function toggleShiny(): void {
   if (!currentSprites) return;
 
   const shinyUrl = getSpriteUrl(currentSprites, { shiny: true });
@@ -91,18 +92,18 @@ function toggleShiny() {
     pokemonImg.classList.remove("hidden");
   };
 
-  pokemonImg.src = getSpriteUrl(currentSprites, { shiny: isShiny });
+  pokemonImg.src = getSpriteUrl(currentSprites, { shiny: isShiny }) ?? "";
 
   shinyBtn.textContent = isShiny ? "✨ Shiny" : "Toggle Shiny";
 }
 
 shinyBtn.addEventListener("click", toggleShiny);
 
-const suggestions = document.querySelectorAll(".suggestion");
+const suggestions = document.querySelectorAll<HTMLButtonElement>(".suggestion");
 
 //pokemon search
 
-async function searchPokemon() {
+async function searchPokemon(): Promise<void> {
   const currentPokemon = getCurrentPokemon();
   const searchQuery = searchInput.value.trim().toLowerCase();
   if (!searchQuery) return;
@@ -148,7 +149,7 @@ async function searchPokemon() {
 //(renderSprite/renderTypes/renderMeta/renderStats/renderTypeEffectiveness now
 //live in render.js - main.js just tells each one exactly where to render)
 
-function displayPokemon(pokemon) {
+function displayPokemon(pokemon: PokemonDetails): void {
   //rendering: pokemon data -> DOM
   renderSprite(pokemon, pokemonImg);
   pokemonName.textContent = pokemon.name;
@@ -179,9 +180,9 @@ function displayPokemon(pokemon) {
 
 //fetching random pokemon
 
-function getRandomPokemon() {
+function getRandomPokemon(): void {
   const randomId = Math.floor(Math.random() * MAX_POKEMON) + 1;
-  searchInput.value = randomId;
+  searchInput.value = String(randomId);
   searchPokemon();
 }
 
@@ -194,7 +195,7 @@ searchInput.addEventListener("keypress", (e) => {
 
 suggestions.forEach((btn) => {
   btn.addEventListener("click", () => {
-    searchInput.value = btn.dataset.name;
+    searchInput.value = btn.dataset.name ?? "";
     searchPokemon();
   });
 });
@@ -204,14 +205,14 @@ suggestions.forEach((btn) => {
 //the api already gives us a tree (every node's evolves to is an array of more nodes)
 //we just reshape it into something easier to work with:
 //{ name, children: [...] }
-function buildEvolutionTree(node) {
+function buildEvolutionTree(node: ChainLink): EvolutionNode {
   return {
     name: node.species.name,
     children: node.evolves_to.map(buildEvolutionTree),
   };
 }
 
-async function loadEvolutionData(pokemon) {
+async function loadEvolutionData(pokemon: PokemonDetails): Promise<void> {
   try {
     //fetching species data
     const speciesData = await fetchSpecies(pokemon.species.url);
@@ -253,7 +254,7 @@ async function loadEvolutionData(pokemon) {
 
 //displaying the evolution chain
 //pulled out of the old loop body - builds one evolution stage element for a single pokemon name
-async function buildStageElement(name) {
+async function buildStageElement(name: string): Promise<HTMLDivElement> {
   const data = await fetchPokemon(name);
   const sprite = getSpriteUrl(data.sprites);
 
@@ -274,7 +275,9 @@ async function buildStageElement(name) {
 
 //recursively renders one tree node and everything beneath it
 //returning the DOM elment that represents the whole subtree
-async function renderEvolutionNode(node) {
+async function renderEvolutionNode(
+  node: EvolutionNode,
+): Promise<HTMLDivElement> {
   const stage = await buildStageElement(node.name);
 
   if (node.children.length === 0) {
@@ -299,7 +302,7 @@ async function renderEvolutionNode(node) {
   return row;
 }
 
-async function displayEvolutionChain(tree) {
+async function displayEvolutionChain(tree: EvolutionNode): Promise<void> {
   evolutionContainer.innerHTML = "";
   const rootElement = await renderEvolutionNode(tree);
   evolutionContainer.appendChild(rootElement);
@@ -317,10 +320,12 @@ initCompareMode({
 });
 
 //keyboard navigation
-function initSuggestionKeyNav(container) {
+function initSuggestionKeyNav(container: HTMLElement): void {
   //we call this inside the function since the history container is dynamic
   //its buttons are created by renderHistory() and didn't exist when the page loaded
-  const buttons = Array.from(container.querySelectorAll(".suggestion"));
+  const buttons = Array.from(
+    container.querySelectorAll<HTMLButtonElement>(".suggestion"),
+  );
 
   if (buttons.length === 0) return;
 
@@ -341,7 +346,7 @@ function initSuggestionKeyNav(container) {
       //prevents the page from scrolling horizontally when user presses arrow keys
       e.preventDefault();
 
-      let nextIndex;
+      let nextIndex: number;
 
       if (e.key === "ArrowRight") {
         //means move forward. % operator wraps around:
@@ -355,26 +360,26 @@ function initSuggestionKeyNav(container) {
       } else if (e.key === "Home") {
         //jump to first
         nextIndex = 0;
-      } else if (e.key === "End") {
+      } else {
         //jump to last
         nextIndex = buttons.length - 1;
       }
 
       //moving the roving tabindex
       //remove tabindex="0" from the button that currently has it
-      buttons[index].setAttribute("tabindex", "-1");
+      buttons[index]?.setAttribute("tabindex", "-1");
       //give tabindex="0" to the button were moving
-      buttons[nextIndex].setAttribute("tabindex", "0");
+      buttons[nextIndex]?.setAttribute("tabindex", "0");
 
       //moving focus
       //we call .focus() explicitly to move the browser's focus right away
-      buttons[nextIndex].focus();
+      buttons[nextIndex]?.focus();
     });
   });
 }
 
 //rendering history
-function renderHistory() {
+function renderHistory(): void {
   const history = getHistory(); // ← from store.js now
 
   historyContainer.innerHTML = "";
@@ -386,7 +391,7 @@ function renderHistory() {
   label.classList.add("suggestion-label");
   historyContainer.appendChild(label);
 
-  history.forEach((query) => {
+  history.forEach((query: string) => {
     const btn = document.createElement("button");
     btn.textContent = query;
     btn.classList.add("suggestion");
@@ -404,7 +409,7 @@ function renderHistory() {
 renderFavorites();
 renderHistory();
 renderTeam();
-function selectPokemon(name) {
+function selectPokemon(name: string): void {
   searchInput.value = name;
   searchPokemon();
 }
@@ -416,20 +421,20 @@ initTCGLibrary({
 });
 //these are the only things about the library main.js needs to know:
 //how to get out of the way when it opens, and how to come back when it closes
-function enterLibraryChrome() {
+function enterLibraryChrome(): void {
   mainContainer.classList.add("hidden");
   favoritesToggle.classList.add("hidden");
   teamStrip.classList.add("hidden");
 }
 
-function exitLibraryChrome() {
+function exitLibraryChrome(): void {
   mainContainer.classList.remove("hidden");
   favoritesToggle.classList.remove("hidden");
   teamStrip.classList.remove("hidden");
 }
 
 //wire up static "Try:" suggestion chips
-const staticSuggestions = document.querySelector(".suggestions");
+const staticSuggestions = requireQuery<HTMLDivElement>(".suggestions");
 initSuggestionKeyNav(staticSuggestions);
 
 //on page load, check if the URL already has a ?pokemon = parm
@@ -439,21 +444,30 @@ const params = new URLSearchParams(window.location.search);
 
 if (params.get("view") === "library") {
   //restore the library view
+  const search = params.get("search");
   showLibrary().then(() => {
     //if we had a search open, we restore it too
-    const search = params.get("search");
     if (search) showCardPanel(search);
   });
-} else if (params.get("pokemon")) {
-  //restore the pokemon card view
-  searchInput.value = params.get("pokemon");
-  searchPokemon();
+} else {
+  const pokemonParam = params.get("pokemon");
+  if (pokemonParam) {
+    //restore the pokemon card view
+    searchInput.value = pokemonParam;
+    searchPokemon();
+  }
 }
+
+interface PokemonHistoryState {
+  pokemon: string;
+}
+
+type AppHistoryState = PokemonHistoryState | LibraryHistoryState;
 
 //popstate fires when the user clicks back or forward
 //event.state is the state object we passed to pushState earlier
-window.addEventListener("popstate", (event) => {
-  const state = event.state;
+window.addEventListener("popstate", (event: PopStateEvent) => {
+  const state = event.state as AppHistoryState | null;
 
   //no state means the user went back to the beginning before any navigation happened
   if (!state || Object.keys(state).length === 0) {
@@ -465,14 +479,14 @@ window.addEventListener("popstate", (event) => {
   }
 
   //library view states
-  if (state.view === "library") {
+  if ("view" in state && state.view === "library") {
     //make sure the library view is visible
     restoreLibraryState(state);
     return;
   }
 
   //main pokemon view
-  if (state.pokemon) {
+  if ("pokemon" in state) {
     //making sure the main view is visible if we were in the library
     if (isLibraryOpen()) {
       hideLibrary();
