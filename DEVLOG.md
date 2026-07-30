@@ -449,4 +449,4 @@ npx wrangler secret list
 then redeployed the worker using:
 npx wrangler deploy
 
-basically, updated the frontend to use the correct worker url, resulting in the card searches now loading succesfully, worker authenticates correctly with the pokemon TCG API, resolving the CORS and 500 errors
+basically, updated the frontend to use the correct worker url, resulting in the card searches now loading succesfully, worker authenticates correctly with the pokemon TCG API, resolving the CORS and 500 errors.
