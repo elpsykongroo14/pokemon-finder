@@ -20,101 +20,135 @@ function getAllowedOrigin(request) {
 //which is what tells the browser "no, this origin doesnt get to read the response."
 function buildCorsHeaders(allowedOrigin) {
   const headers = { Vary: "Origin" };
+
   if (allowedOrigin) {
     headers["Access-Control-Allow-Origin"] = allowedOrigin;
     headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
     headers["Access-Control-Allow-Headers"] = "Content-Type";
   }
+
   return headers;
 }
 
 export default {
   async fetch(request, env) {
-    //---CORS preflight
-    //before making a "real" request, browsers send a preflight options request to ask:
-    //"is this cross-origin request allowed?"
-    //we have to answer yes, or the browser wont proceed
+    //CORS headers are created immediately.
+    //this is important because if anything fails later,
+    //our error response can still tell the browser:
+    //"yes, this origin is allowed to read this response."
     const allowedOrigin = getAllowedOrigin(request);
     const corsHeaders = buildCorsHeaders(allowedOrigin);
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, {
-        headers: corsHeaders,
-      });
-    }
+    try {
+      //---CORS preflight
+      //before making a "real" request, browsers send a preflight options request to ask:
+      //"is this cross-origin request allowed?"
+      //we have to answer yes, or the browser wont proceed
+      if (request.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: corsHeaders,
+        });
+      }
 
-    const clientIP = request.headers.get("CF-Connecting-IP");
-    const { success } = await env.TCG_RATE_LIMITER.limit({ key: clientIP });
+      const clientIP = request.headers.get("CF-Connecting-IP");
 
-    if (!success) {
-      return new Response("Too many requests", {
-        status: 429,
-        headers: corsHeaders,
-      });
-    }
-    //---only allow GET requests
-    //corsHeaders is included here too, not just on the success response below -
-    //otherwise a disallowed-method request from an ALLOWED origin would get a
-    //405 the browser can't actually read, which just looks like a confusing
-    //CORS error instead of the real, boring "wrong method" reason
-    if (request.method !== "GET") {
-      return new Response("Method not allowed", {
-        status: 405,
-        headers: corsHeaders,
-      });
-    }
+      const { success } = await env.TCG_RATE_LIMITER.limit({ key: clientIP });
 
-    //---build the TCG API URL
-    //the browser sends requests to our worker url with TCG api as a query parameter
-    //we extract everything after the worker's origin and forward it to the real tcg api
-    const incomingURL = new URL(request.url);
+      if (!success) {
+        return new Response("Too many requests", {
+          status: 429,
+          headers: corsHeaders,
+        });
+      }
 
-    //---check the server-side cache first
-    //the key is the exact query string, prefixed so this KV namespace
-    //stays safe to reuse for other kinds of cached data later
-    const cacheKey = `tcg:${incomingURL.search}`;
-    const cached = await env.TCG_CACHE.get(cacheKey, { type: "json" });
+      //---only allow GET requests
+      //corsHeaders is included here too, not just on the success response below -
+      //otherwise a disallowed-method request from an ALLOWED origin would get a
+      //405 the browser can't actually read, which just looks like a confusing
+      //CORS error instead of the real, boring "wrong method" reason
+      if (request.method !== "GET") {
+        return new Response("Method not allowed", {
+          status: 405,
+          headers: corsHeaders,
+        });
+      }
 
-    if (cached) {
-      return new Response(JSON.stringify(cached), {
-        status: 200,
+      //---build the TCG API URL
+      //the browser sends requests to our worker url with TCG api as a query parameter
+      //we extract everything after the worker's origin and forward it to the real tcg api
+      const incomingURL = new URL(request.url);
+
+      //---check the server-side cache first
+      //the key is the exact query string, prefixed so this KV namespace
+      //stays safe to reuse for other kinds of cached data later
+      const cacheKey = `tcg:${incomingURL.search}`;
+
+      const cached = await env.TCG_CACHE.get(cacheKey, { type: "json" });
+
+      if (cached) {
+        return new Response(JSON.stringify(cached), {
+          status: 200,
+          headers: {
+            "Content-type": "application/json",
+            "X-Cache": "HIT",
+            ...corsHeaders,
+          },
+        });
+      }
+
+      //---build the TCG API URL
+      const tcgURL = `https://api.pokemontcg.io/v2/cards${incomingURL.search}`;
+
+      //---forward request to TCG api with the secret key
+      //env.TCG_API_KEY is a cloudflare secret, its never in the code,
+      //never in any file, or visible to anywhere
+      const tcgResponse = await fetch(tcgURL, {
         headers: {
-          "Content-type": "application/json",
-          "X-Cache": "HIT",
+          "X-Api-Key": env.TCG_API_KEY,
+        },
+      });
+
+      //---forward the response back to the browser
+      const data = await tcgResponse.json();
+
+      if (tcgResponse.ok) {
+        await env.TCG_CACHE.put(cacheKey, JSON.stringify(data), {
+          expirationTtl: 60 * 60 * 24, //24 hours, in seconds
+        });
+      }
+
+      return new Response(JSON.stringify(data), {
+        status: tcgResponse.status,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Cache": "MISS",
+
+          //corsHeaders is already the object we want -
+          //it was built once, above, by CALLING buildCorsHeaders().
+          //from here on it's just data to spread in, not a function to call again.
           ...corsHeaders,
         },
       });
+    } catch (error) {
+      //this catches unexpected Worker crashes.
+      //without this, Cloudflare creates its own 500 response,
+      //which does NOT contain our CORS headers.
+      //the browser then incorrectly reports the problem as a CORS error.
+      console.error(error);
+
+      return new Response(
+        JSON.stringify({
+          error: error.message,
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        },
+      );
     }
-    //---build the TCG API URL
-    const tcgURL = `https://api.pokemontcg.io/v2/cards${incomingURL.search}`;
-
-    //---forward request to TCG api with the secret key
-    //env.TCG_API_KEY is a cloudflare secret, its never in the code, never in any file, or visible to anywhere
-    const tcgResponse = await fetch(tcgURL, {
-      headers: {
-        "X-Api-Key": env.TCG_API_KEY,
-      },
-    });
-
-    //---forward the response back to the browser
-    const data = await tcgResponse.json();
-
-    if (tcgResponse.ok) {
-      await env.TCG_CACHE.put(cacheKey, JSON.stringify(data), {
-        expirationTtl: 60 * 60 * 24, //24 hours, in seconds
-      });
-    }
-
-    return new Response(JSON.stringify(data), {
-      status: tcgResponse.status,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Cache": "MISS",
-        //corsHeaders is already the object we want - it was built once,
-        //above, by CALLING buildCorsHeaders(). from here on it's just data
-        //to spread in, not a function to call again.
-        ...corsHeaders,
-      },
-    });
   },
 };
