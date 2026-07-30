@@ -426,3 +426,27 @@ exported LibraryHistoryState ({ view: string; search?: string }) as this file's 
 main.ts was always going to be last in leaf to root order since everything else in the app imports into it and it imports nothing back by the time this conversion happened, every single one of its imports (state, api, render, store, sprites, sanitize, dom, favorites, team, comparemode, tcglibrary, type) was already typed. that's the payoff the whole ordering decision from 07-18 was for: this is the first file in the entire migration where an import boundary never once produced a silent any. ran npx tsc --noEmit clean across the whole src/ directory after this, first time the compiler has had the complete picture instead of checking converted files in isolation against a partly any graph.
 
 buildEvolutionTree(node: ChainLink): EvolutionNode and the async evolution rendering chain (buildStageElement, renderEvolutionNode, displayEvolutionChain) all came in without needing new types ChainLink and EvolutionNode were modeled during the 07-19 type.ts session specifically off what this code reads (.species.name, .evolves_to), so converting the function that actually walks the tree was just annotating parameters against a shape that was already waiting for it.
+
+07-30-26 the pokemon TCG search feature failed to load cards while devloping locally
+
+frontend cosole showed: Access to fetch at
+https://tcg-proxy.tcg-proxy.workers.dev/...
+has been blocked by CORS policy
+
+and then: 500 Internal Server Error
+
+the worker url also returned: Error 1101
+Worker threw exception.
+
+after investigating the cause was that the caloudflare worker was missing the TCG_API_KEY secret, without the api key requests to the pokemon tcg api failed causing the worker to throw an exception, the browser reported this as a CORS error.
+
+this was fixed by adding missing cloudflare worker secret:
+npx wrangler secret put TCG_API_KEY
+
+i then verified the secret with:
+npx wrangler secret list
+
+then redeployed the worker using:
+npx wrangler deploy
+
+basically, updated the frontend to use the correct worker url, resulting in the card searches now loading succesfully, worker authenticates correctly with the pokemon TCG API, resolving the CORS and 500 errors.
