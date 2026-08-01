@@ -584,9 +584,13 @@ function renderHistory(): void {
 renderFavorites();
 renderHistory();
 renderTeam();
-fetchAllpokemonNames().then((names) => {
-  allPokemonNames = names;
-});
+fetchAllpokemonNames()
+  .then((names) => {
+    allPokemonNames = names;
+  })
+  .catch((err) => {
+    console.error("Failed to load pokemon names for autocomplete:", err);
+  });
 function selectPokemon(name: string): void {
   searchInput.value = name;
   searchPokemon();

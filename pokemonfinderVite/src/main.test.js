@@ -67,6 +67,22 @@ function buildDOM() {
       <button id="compare-btn"></button>
       <div id="compare-hint" class="hidden"></div>
       <div id="search-history"></div>
+      <div class="container">
+  <div class="search-wrapper">
+    <div class="search-box">
+      <input id="searchInput" />
+      <button id="searchBtn"></button>
+    </div>
+    <div id="autocomplete-panel" class="hidden">
+      <ul id="autocomplete-list"></ul>
+      <div id="autocomplete-preview" class="hidden">
+        <img id="autocomplete-preview-img" />
+        <div id="autocomplete-preview-name"></div>
+        <div id="autocomplete-preview-id"></div>
+      </div>
+    </div>
+  </div>
+  <button id="randomBtn"></button>
       <div id="error" class="hidden"></div>
     </div>
 
@@ -362,8 +378,14 @@ describe("main.js", () => {
     });
 
     it("does nothing on an empty query", async () => {
-      global.fetch = vi.fn();
+      global.fetch = vi.fn(() =>
+        Promise.resolve(fakeResponse(true, { results: [] })),
+      );
       await bootApp();
+
+      //clear out the call recorded by bootApp's own name-list fetch
+      //we only care about what happens after this point, from the click
+      global.fetch.mockClear();
 
       document.getElementById("searchInput").value = "   ";
       document.getElementById("searchBtn").click();
