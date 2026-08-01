@@ -56,17 +56,20 @@ async function getJSON<T>(url: string, options: RequestInit = {}): Promise<T> {
 }
 
 //Pokemon
+
+//the options are optional so every existing call site (searchPokemon,getRandomPokemon, the evolution chain builder, etc)
+//keeps compiling unchanged.
 export async function fetchPokemon(
   nameOrId: string | number,
+  options: { signal?: AbortSignal } = {},
 ): Promise<PokemonDetails> {
   const key = String(nameOrId).toLowerCase().trim();
-
-  //return cached result if we have it
   if (pokeCache[key]) return pokeCache[key];
 
-  const data = await getJSON<PokemonDetails>(`${POKE_API}/pokemon/${key}`);
+  const data = await getJSON<PokemonDetails>(`${POKE_API}/pokemon/${key}`, {
+    signal: options.signal,
+  });
 
-  //Store in cache before returning
   pokeCache[key] = data;
   return data;
 }
