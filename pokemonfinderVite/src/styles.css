@@ -312,25 +312,33 @@ h1 span {
 /* ============================================================
    SEARCH BOX
    ============================================================ */
+.search-wrapper {
+  position: relative;
+  margin-bottom: 12px;
+}
 .search-box {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
-  position: relative;
+  /* margin-bottom and position:relative removed — they live on the wrapper now */
 }
 
-.autocomplete-list {
+.autocomplete-panel {
   position: absolute;
   z-index: 20;
   margin-top: 4px;
   width: 100%;
-  max-height: 280px;
-  overflow-y: auto;
-  list-style: none;
   background: #1a1d24;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
+  overflow: hidden;
+}
+
+.autocomplete-list {
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
   padding: 4px;
+  margin: 0;
 }
 .autocomplete-item {
   display: flex;
@@ -343,6 +351,27 @@ h1 span {
 }
 .autocomplete-item.active {
   background: rgba(91, 141, 238, 0.15);
+}
+
+.autocomplete-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.autocomplete-preview img {
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+}
+.autocomplete-preview-name {
+  color: #d8dce8;
+  text-transform: capitalize;
+}
+.autocomplete-preview-id {
+  color: #6b7080;
+  font-size: 0.85em;
 }
 
 input {
