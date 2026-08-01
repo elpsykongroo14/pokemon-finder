@@ -2,7 +2,12 @@ import "./styles.css";
 
 import { getHistory, saveToHistory } from "./store";
 
-import { fetchPokemon, fetchSpecies, fetchEvolutionChain } from "./api";
+import {
+  fetchAllpokemonNames,
+  fetchPokemon,
+  fetchSpecies,
+  fetchEvolutionChain,
+} from "./api";
 
 import {
   initTCGLibrary,
@@ -62,6 +67,20 @@ const flavorText = requireElement<HTMLParagraphElement>("flavor-text");
 const pokemonMeta = requireElement<HTMLDivElement>("pokemon-meta");
 const typeEffectiveness = requireElement<HTMLDivElement>("type-effectiveness");
 const mainContainer = requireQuery<HTMLDivElement>(".container");
+const autocompletePreview = requireElement<HTMLDivElement>(
+  "autocomplete-preview",
+);
+const autocompletePreviewImg = requireElement<HTMLImageElement>(
+  "autocomplete-preview-img",
+);
+const autocompletePreviewName = requireElement<HTMLDivElement>(
+  "autocomplete-preview-name",
+);
+const autocompletePreviewId = requireElement<HTMLDivElement>(
+  "autocomplete-preview-id",
+);
+const autocompletePanel = requireElement<HTMLDivElement>("autocomplete-panel");
+const autocompleteList = requireElement<HTMLUListElement>("autocomplete-list");
 
 const MAX_POKEMON = 1025;
 
@@ -145,6 +164,140 @@ async function searchPokemon(): Promise<void> {
   }
 }
 
+let allPokemonNames: string[] = [];
+let matches: string[] = [];
+let highlightedIndex = -1;
+
+//filters the full name list down to the ones that start with the query first
+//(a "char" query should surface charmander before scyther, even tho scyther doesnt contain "char" at all and wouldnt even match)
+//then falls back to substring matches so "lizard" still finds charizard
+function filterNames(query: string, allNames: string[]): string[] {
+  const q = query.toLowerCase();
+  const stratsWith = allNames.filter((n) => n.startsWith(q));
+  const contains = allNames.filter((n) => !n.startsWith(q) && n.includes(q));
+  return [...stratsWith, ...contains].slice(0, 8);
+}
+
+function closeAutocomplete(): void {
+  autocompletePanel.classList.add("hidden");
+  autocompleteList.innerHTML = "";
+  searchInput.setAttribute("aria-activedescendant", "false");
+  searchInput.removeAttribute("aria-activedescendant");
+  highlightedIndex = -1;
+  hidePreview();
+}
+
+function renderAutocomplete(names: string[]): void {
+  matches = names;
+  autocompleteList.innerHTML = "";
+
+  if (names.length === 0) {
+    closeAutocomplete();
+    return;
+  }
+
+  names.forEach((name, index) => {
+    const li = document.createElement("li");
+    li.id = `autocomplete-option-${index}`;
+    li.className = "autocomplete-item";
+    li.role = "option";
+    li.textContent = name;
+    li.addEventListener("click", () => selectAutocompleteOption(index));
+    autocompleteList.appendChild(li);
+  });
+
+  autocompletePanel.classList.remove("hidden");
+  searchInput.setAttribute("aria-expanded", "true");
+  setHighlighted(0);
+}
+
+let previewRequestController: AbortController | null = null;
+
+function renderPreview(pokemon: PokemonDetails): void {
+  const sprite = getSpriteUrl(pokemon.sprites);
+
+  //attributes, not innerHTTML same reasoning already applied evrywhere else
+  //no untrusted string ever gets parsed as markup, its just assigned as plain data
+  autocompletePreviewImg.src = sprite ?? "";
+  autocompletePreviewImg.alt = pokemon.name;
+  autocompletePreviewName.textContent = pokemon.name;
+  autocompletePreviewId.textContent = `#${String(pokemon.id).padStart(3, "0")}`;
+  autocompletePreview.classList.remove("hidden");
+}
+
+function hidePreview(): void {
+  autocompletePreview.classList.add("hidden");
+}
+
+async function updatePreview(name: string): Promise<void> {
+  //cancel whatever preview request is still in flight, its now stale by definition,
+  //because were about to replace it
+  previewRequestController?.abort();
+
+  const controller = new AbortController();
+  previewRequestController = controller;
+
+  try {
+    const pokemon = await fetchPokemon(name, { signal: controller.signal });
+    renderPreview(pokemon);
+  } catch (err) {
+    //an aborted fetch rejects with a DOMException named "AbortError"
+    //that's not a real failure, it's us cleaning up after ourselves,
+    //so we deliberately swallow it and say nothing to the user
+    if (err instanceof DOMException && err.name === "AbortError") return;
+    //any other error (real network failure, 404) we can ignore too here
+    //this is a "nice to have" preview, not the main search flow,
+    //so we fail quietly rather than showing an error for a sprite thumbnail
+  }
+}
+
+function setHighlighted(index: number): void {
+  const items =
+    autocompleteList.querySelectorAll<HTMLLIElement>(".autocomplete-item");
+  items.forEach((item) => item.classList.remove("active"));
+
+  highlightedIndex = index;
+  const active = items[index];
+  if (active) {
+    active.classList.add("active");
+    searchInput.setAttribute("aria-activedescendant", active.id);
+    updatePreview(active.textContent ?? "");
+  }
+}
+
+function selectAutocompleteOption(index: number): void {
+  const name = matches[index];
+  if (!name) return;
+  searchInput.value = name;
+  closeAutocomplete();
+  searchPokemon();
+}
+
+//a debounced wrapper around fn: calling the returned function resets a timer.
+//only the last call within `delayMs` of silence actually invokes fn.
+function debounce<Args extends unknown[]>(
+  fn: (...args: Args) => void,
+  delayMs: number,
+): (...args: Args) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  return (...args: Args): void => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delayMs);
+  };
+}
+
+const handleLiveSearch = debounce((query: string) => {
+  if (!query) {
+    closeAutocomplete();
+    return;
+  }
+  renderAutocomplete(filterNames(query, allPokemonNames));
+}, 250);
+
+searchInput.addEventListener("input", () => {
+  handleLiveSearch(searchInput.value.trim().toLowerCase());
+});
 //displaying the pokemon
 //(renderSprite/renderTypes/renderMeta/renderStats/renderTypeEffectiveness now
 //live in render.js - main.js just tells each one exactly where to render)
@@ -190,7 +343,29 @@ searchBtn.addEventListener("click", searchPokemon);
 randomBtn.addEventListener("click", getRandomPokemon);
 
 searchInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") searchPokemon();
+  const isOpen = !autocompleteList.classList.contains("hidden");
+
+  if (e.key === "Enter") {
+    if (isOpen && highlightedIndex >= 0) {
+      e.preventDefault();
+      selectAutocompleteOption(highlightedIndex);
+    } else {
+      searchPokemon();
+    }
+    return;
+  }
+
+  if (!isOpen) return;
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    setHighlighted(Math.min(highlightedIndex + 1, matches.length - 1));
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    setHighlighted(Math.max(highlightedIndex - 1, 0));
+  } else if (e.key === "Escape") {
+    closeAutocomplete();
+  }
 });
 
 suggestions.forEach((btn) => {
@@ -409,6 +584,9 @@ function renderHistory(): void {
 renderFavorites();
 renderHistory();
 renderTeam();
+fetchAllpokemonNames().then((names) => {
+  allPokemonNames = names;
+});
 function selectPokemon(name: string): void {
   searchInput.value = name;
   searchPokemon();
