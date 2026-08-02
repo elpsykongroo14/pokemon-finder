@@ -1194,6 +1194,10 @@ input:focus {
   gap: 14px;
   align-content: start;
 }
+.card-grid-sentinel {
+  grid-column: 1 / -1;
+  height: 1px;
+}
 .tcg-card {
   background: var(--bg-card);
   border: 0.5px solid var(--border);
