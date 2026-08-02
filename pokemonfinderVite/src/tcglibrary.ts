@@ -63,6 +63,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 //safe function:
 //it takes a plain text message and css class then safely puts it into cardGrid no matter what the message contains
 function setCardGridMessage(text: string, className: string): void {
+  teardownObserver();
   cardGrid.innerHTML = "";
   const p = document.createElement("p");
   p.className = className;
@@ -180,42 +181,107 @@ export function getSortedCards(): TCGCard[] {
 
 //here's the rendering part
 
-//the function takes an array card objects and builds the DOM
+//builds one card's DOM element. pulled out of the rendering loop so
+//the batching logic below can call it per card without knowing or
+//caring how a card is actually constructed
+function buildCardElement(card: TCGCard): HTMLDivElement {
+  const el = document.createElement("div");
+  el.className = "tcg-card";
+
+  const imgWrap = document.createElement("div");
+  imgWrap.className = "tcg-card-img-wrap";
+
+  const img = document.createElement("img");
+  img.src = card.images?.small || "";
+  img.alt = card.name;
+  img.loading = "lazy";
+  imgWrap.appendChild(img);
+
+  const info = document.createElement("div");
+  info.className = "tcg-card-info";
+
+  const setDiv = document.createElement("div");
+  setDiv.className = "tcg-card-set";
+  setDiv.textContent = card.set?.name || "Unknown set";
+
+  const rarityDiv = document.createElement("div");
+  rarityDiv.className = "tcg-card-rarity";
+  rarityDiv.textContent = card.rarity || "Unknown";
+
+  info.appendChild(setDiv);
+  info.appendChild(rarityDiv);
+  el.appendChild(imgWrap);
+  el.appendChild(info);
+
+  el.addEventListener("click", () => openCardModal(card));
+  return el;
+}
+const BATCH_SIZE = 40;
+
+//the full already sorted list waiting to be paged into the DOM
+//and how much of it weve mounted so far
+let cardsPendingRender: TCGCard[] = [];
+let renderedCount = 0;
+
+let cardObserver: IntersectionObserver | null = null;
+let sentinel: HTMLDivElement | null = null;
+
+//the entry point: replaces the old renderCardGrid(cards) call sites
+//resets everything and renders the first batch immediately
 export function renderCardGrid(cards: TCGCard[]): void {
+  teardownObserver();
   cardGrid.innerHTML = "";
+  cardsPendingRender = cards;
+  renderedCount = 0;
+  appendNextBatch();
+}
 
-  cards.forEach((card) => {
-    const el = document.createElement("div");
-    el.className = "tcg-card";
+function appendNextBatch(): void {
+  const nextSlice = cardsPendingRender.slice(
+    renderedCount,
+    renderedCount + BATCH_SIZE,
+  );
+  nextSlice.forEach((card) => cardGrid.appendChild(buildCardElement(card)));
+  renderedCount += nextSlice.length;
 
-    const imgWrap = document.createElement("div");
-    imgWrap.className = "tcg-card-img-wrap";
+  const isFullyRendered = renderedCount >= cardsPendingRender.length;
 
-    const img = document.createElement("img");
-    img.src = card.images?.small || ""; // attribute set directly, not parsed
-    img.alt = card.name; // textContent-equivalent for attributes
-    img.loading = "lazy";
-    imgWrap.appendChild(img);
+  if (isFullyRendered) {
+    teardownObserver();
+  } else {
+    placeSentinel();
+  }
+}
 
-    const info = document.createElement("div");
-    info.className = "tcg-card-info";
+//moves (or creates) the sentinel element to the current end of the grid
+//and makes sure exactly one observer is watching it
+function placeSentinel(): void {
+  if (!sentinel) {
+    sentinel = document.createElement("div");
+    sentinel.className = "card-grid-sentinel";
+  } else {
+    sentinel.remove();
+  }
+  cardGrid.appendChild(sentinel);
 
-    const setDiv = document.createElement("div");
-    setDiv.className = "tcg-card-set";
-    setDiv.textContent = card.set?.name || "Unknown set";
+  if (!cardObserver) {
+    cardObserver = new IntersectionObserver((entries) => {
+      //isIntersecting means the sentinel scrolled into view
+      //the user is close enough to the bottom that we should load more
+      if (entries[0]?.isIntersecting) {
+        appendNextBatch();
+      }
+    });
+  }
+  cardObserver.observe(sentinel);
+}
 
-    const rarityDiv = document.createElement("div");
-    rarityDiv.className = "tcg-card-rarity";
-    rarityDiv.textContent = card.rarity || "Unknown";
-
-    info.appendChild(setDiv);
-    info.appendChild(rarityDiv);
-    el.appendChild(imgWrap);
-    el.appendChild(info);
-
-    el.addEventListener("click", () => openCardModal(card));
-    cardGrid.appendChild(el);
-  });
+//stops watching and forgets the observer entirely
+//gets called whenever the grid is about to be cleared or the panel is closing
+//an IntersectionObserver that keeps watching a detached element is a real memory leak not a theoretical one
+function teardownObserver(): void {
+  cardObserver?.disconnect();
+  cardObserver = null;
 }
 
 //card detail modal
@@ -354,6 +420,7 @@ export async function showCardPanel(pokemonName: string): Promise<void> {
 function hideCardPanel(): void {
   cardPanel.classList.add("hidden");
   currentTCGCards = [];
+  teardownObserver();
 }
 
 //called once from main.js at startup, the same way initFavorites and initComparemode are.
