@@ -113,17 +113,43 @@
       <p class="subtitle">Search for any Pokémon</p>
 
       <!-- Search -->
-      <div class="search-box">
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="Name or ID (1 – 1025)"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <button id="searchBtn" class="btn btn-primary">Search</button>
-      </div>
+      <div class="search-wrapper">
+        <div class="search-box">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Name or ID (1 – 1025)"
+            autocomplete="off"
+            spellcheck="false"
+            role="combobox"
+            aria-expanded="false"
+            aria-controls="autocomplete-list"
+            aria-autocomplete="list"
+          />
+          <button id="searchBtn" class="btn btn-primary">Search</button>
+        </div>
 
+        <div id="autocomplete-panel" class="autocomplete-panel hidden">
+          <ul
+            id="autocomplete-list"
+            class="autocomplete-list"
+            role="listbox"
+          ></ul>
+          <div id="autocomplete-preview" class="autocomplete-preview hidden">
+            <img id="autocomplete-preview-img" src="" alt="" />
+            <div>
+              <div
+                id="autocomplete-preview-name"
+                class="autocomplete-preview-name"
+              ></div>
+              <div
+                id="autocomplete-preview-id"
+                class="autocomplete-preview-id"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
       <button class="btn btn-ghost random-btn" id="randomBtn">
         Random Pokémon
       </button>
