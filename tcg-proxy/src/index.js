@@ -6,6 +6,7 @@
 const ALLOWED_ORIGINS = [
   "https://pokemon-finder-5wx.pages.dev",
   "http://localhost:5173",
+  "http://localhost:4173/",
   "https://ui-rehaul.pokemon-finder-react.pages.dev",
 ];
 
@@ -81,7 +82,7 @@ export default {
       const incomingURL = new URL(request.url);
 
       //---check the server-side cache first
-      //the key is the exact query string, prefixed so this KV namespace
+      //the key is the exact query string, prefixed so this KV namespace,
       //stays safe to reuse for other kinds of cached data later
       const cacheKey = `tcg:${incomingURL.search}`;
 
