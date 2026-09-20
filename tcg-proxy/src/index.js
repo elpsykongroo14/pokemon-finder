@@ -6,6 +6,7 @@
 const ALLOWED_ORIGINS = [
   "https://pokemon-finder-5wx.pages.dev",
   "http://localhost:5173",
+  "https://ui-rehaul.pokemon-finder-react-b8o.pages.dev",
 ];
 
 //the decision function
@@ -126,7 +127,7 @@ export default {
 
           //corsHeaders is already the object we want -
           //it was built once, above, by CALLING buildCorsHeaders().
-          //from here on it's just data to spread in, not a function to call again.
+          //from here on it's just data to spread in, not a function to call again
           ...corsHeaders,
         },
       });
