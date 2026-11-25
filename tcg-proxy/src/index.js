@@ -6,8 +6,8 @@
 const ALLOWED_ORIGINS = [
   "https://pokemon-finder-5wx.pages.dev",
   "http://localhost:5173",
-  "http://localhost:4173/",
-  "https://ui-rehaul.pokemon-finder-react.pages.dev",
+  "http://localhost:4173",
+  "https://ui-rehaul.pokemon-finder-react-b8o.pages.dev",
 ];
 
 //the decision function
