@@ -10,11 +10,50 @@ const ALLOWED_ORIGINS = [
   "https://ui-rehaul.pokemon-finder-react-b8o.pages.dev",
 ];
 
+//the React app on Cloudflare Pages: its production site AND every preview
+//deploy, which Pages serves on a per-deploy subdomain
+//(https://1f089d80.pokemon-finder-react-b8o.pages.dev). an exact list could
+//never name those in advance, so this one project's host is matched by
+//pattern: https only, any single subdomain label or none, and nothing
+//after the host (anchored with ^ and $, so "evil.com/?x=...pages.dev" or
+//"pokemon-finder-react-b8o.pages.dev.evil.com" never match)
+const ALLOWED_ORIGIN_PATTERN =
+  /^https:\/\/([a-z0-9-]+\.)?pokemon-finder-react-b8o\.pages\.dev$/;
+
 //the decision function
 // "figure out, per request, whether this origin earns a yes"
 function getAllowedOrigin(request) {
   const origin = request.headers.get("Origin");
-  return ALLOWED_ORIGINS.includes(origin) ? origin : null;
+  if (!origin) return null;
+  if (ALLOWED_ORIGINS.includes(origin)) return origin;
+  return ALLOWED_ORIGIN_PATTERN.test(origin) ? origin : null;
+}
+
+//one call to the TCG API, read safely. the API sometimes answers with an
+//empty or cut-off body; calling .json() on that threw "Unexpected end of
+//JSON input" and this worker answered 500. now a bad body is reported as
+//{ ok: false } so the caller can try again
+async function callTcgApi(url, apiKey) {
+  try {
+    const response = await fetch(url, { headers: { "X-Api-Key": apiKey } });
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
+    if (data === null) return { ok: false, status: 502 };
+    return { ok: response.ok, status: response.status, data };
+  } catch {
+    //the network failed, or the body was not JSON
+    return { ok: false, status: 502 };
+  }
+}
+
+//a SERVER-side failure (5xx, or a body we could not read) is often gone a
+//moment later: try once more after a short pause. a 4xx is the request's
+//own fault and would not change, so it is returned as it is
+async function callTcgApiWithRetry(url, apiKey) {
+  const first = await callTcgApi(url, apiKey);
+  if (first.ok || first.status < 500) return first;
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  return callTcgApi(url, apiKey);
 }
 
 //builds the actual header set for a given decision.
@@ -105,23 +144,34 @@ export default {
       //---forward request to TCG api with the secret key
       //env.TCG_API_KEY is a cloudflare secret, its never in the code,
       //never in any file, or visible to anywhere
-      const tcgResponse = await fetch(tcgURL, {
-        headers: {
-          "X-Api-Key": env.TCG_API_KEY,
-        },
-      });
+      const result = await callTcgApiWithRetry(tcgURL, env.TCG_API_KEY);
 
-      //---forward the response back to the browser
-      const data = await tcgResponse.json();
+      //---the API failed twice: say so plainly, as a 502 (a bad answer from
+      //the server behind this one), with the CORS headers, so the browser
+      //shows the app's error message instead of a confusing CORS error
+      if (!result.data) {
+        return new Response(
+          JSON.stringify({ error: "The card service did not answer. Try again." }),
+          {
+            status: result.status,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          },
+        );
+      }
 
-      if (tcgResponse.ok) {
+      const data = result.data;
+
+      //only a real success is cached: an error cached for 24 hours would
+      //keep a Pokémon's cards away for a whole day
+      if (result.ok) {
         await env.TCG_CACHE.put(cacheKey, JSON.stringify(data), {
           expirationTtl: 60 * 60 * 24, //24 hours, in seconds
         });
       }
 
+      //---forward the response back to the browser
       return new Response(JSON.stringify(data), {
-        status: tcgResponse.status,
+        status: result.status,
         headers: {
           "Content-Type": "application/json",
           "X-Cache": "MISS",
