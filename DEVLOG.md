@@ -468,3 +468,17 @@ bugs from writing it the first time, worth keeping honest about since none of th
 2. closeAutocomplete never reset aria-expanded back to false on close. wouldnt have caught this without actually thinking about a screen reader use case, nothing visibly breaks.
 
 quieter test bug: adding fetchAllpokemonNames() as an eager startup call meant every bootApp() now makes a real fetch call, which broke one specific test asserting fetch was never called on an empty query search not because the app regressed, the empty query guard still short circuits correctly, but because the test's assumption ("importing main.js has no network side effects") stopped being true. fixed by mockClear()ing right before the part of the test that actually matters, and by giving mockFetchFor a branch for the limit=1025 url so the other five tests that share that helper dont quietly 404 against an endpoint they were never testing. also added a .catch() to the fetchAllpokemonNames().then() chain that never had one autocomplete failing to load names shouldnt be a crash, same "fail quiet on a nice to have" reasoning as the preview fetch's own catch block.
+
+11-26-26 closing the vanilla app
+
+this is the last entry for this repo. the react rebuild covers everything this version did and more, so instead of porting the black & white redesign back here (that was the plan for R11) i decided to stop maintaining two frontends and archive this one.
+
+why not port it: it would have been the same ~10k lines of front-end work done a second time, for a design that already exists, and every future change would have had to be done twice or the two apps would drift apart again. the parts of R11 that were actually worth learning (a hand-written router, a store with subscribe, cleanup on unmount) don't need a full port to learn.
+
+what moved out first: the tcg-proxy worker lived in this repo by accident, it was born here because this was the only repo i had. but it's a back-end service used by both frontends, and this repo's CD was what deployed it, so archiving this repo first would have left the worker undeployable. it now has its own repo (pokemon-finder-tcg-proxy), moved with its history using git subtree split so git blame still explains every line. it also got its first tests there (14, through the worker's http contract with fake bindings injected through env) and its own pipeline: tests + dry-run on PRs, deploy + production smoke test on main.
+
+handover order mattered: switched this repo's deploy-worker job off first, then turned the new pipeline on. zero deployers for a few minutes is harmless, two deployers means the last one to deploy wins.
+
+shutdown order: screenshots of the live site first (in docs/screenshots now), then this last PR (readme, this entry, cd.yml removed so the merge doesn't redeploy), then deleted the pages project, removed this site's origin from the worker's CORS allowlist, deleted this repo's secrets and the token it used, then archived.
+
+what this repo taught me, start to end: DOM and async basics, localStorage, ES modules, vite, breaking up a 1300 line main.js, XSS and escaping, a proxy with KV caching and rate limiting, vitest and CI, and the typescript migration where the compiler found bugs i didn't know i had. the react version only went as smoothly as it did because of all of that.
