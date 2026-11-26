@@ -35,9 +35,10 @@ npm install
 npm run dev
 ```
 
-You'll need your own Cloudflare Worker deployed as a proxy for the TCG
-API key — see `tcg-proxy/` for the source — and point `TCG_PROXY` in
-`src/api.js` at your deployed Worker URL.
+The TCG card library goes through a Cloudflare Worker proxy that keeps the
+API key off the client. It lives in its own repository:
+[pokemon-finder-tcg-proxy](https://github.com/elpsykongroo14/pokemon-finder-tcg-proxy).
+Point `VITE_TCG_PROXY` in `.env` at your deployed Worker URL (see `.env.example`).
 
 ## What I learned building this
 

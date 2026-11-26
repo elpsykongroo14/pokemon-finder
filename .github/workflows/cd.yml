@@ -6,6 +6,9 @@ on:
     branches: [main]
     types: [completed]
 
+# the tcg-proxy worker is deployed from its own repository now
+# (elpsykongroo14/pokemon-finder-tcg-proxy). this workflow deploys the
+# frontend only.
 jobs:
   deploy-frontend:
     if: github.event.workflow_run.conclusion == 'success'
@@ -43,25 +46,3 @@ jobs:
           accountId: ${{secrets.CLOUDFLARE_ACCOUNT_ID}}
           workingDirectory: pokemonfinderVite
           command: pages deploy dist --project-name=pokemon-finder
-
-  deploy-worker:
-    if: github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the exact commit CI tested
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Deploy Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{secrets.CLOUDFLARE_API_TOKEN}}
-          accountId: ${{secrets.CLOUDFLARE_ACCOUNT_ID}}
-          workingDirectory: tcg-proxy
-          #the version tcg-proxy/package-lock.json pins. without it the action
-          #installs its own default, Wrangler 3.90.0, which predates support
-          #for wrangler.jsonc (added in 3.91) and fails with "Missing
-          #entry-point": every worker deploy since Sep 20 failed this way
-          wranglerVersion: "4.112.0"
-          command: deploy
